@@ -13,7 +13,7 @@ def list_devices(
     try:
         base_sql = """
             SELECT id, ip, mac, name, display_name, device_type,
-                   first_seen, last_seen
+                   first_seen, last_seen, vendor, icon, attributes
             FROM devices
         """
         clauses: list[str] = []
@@ -22,10 +22,7 @@ def list_devices(
         if device_type:
             clauses.append("device_type = ?")
             params.append(device_type)
-        if online_only:
-            # later, you can base this on last_seen freshness
-            pass
-    
+        
         if clauses:
             base_sql += " WHERE " + " AND ".join(clauses)
         base_sql += " ORDER BY ip"
@@ -41,6 +38,9 @@ def list_devices(
                 device_type=r[5],
                 first_seen=r[6],
                 last_seen=r[7],
+                vendor=r[8],
+                icon=r[9],
+                attributes=r[10],
             )
             for r in rows
         ]
@@ -54,7 +54,7 @@ def get_device(device_id: str):
         row = conn.execute(
             """
             SELECT id, ip, mac, name, display_name, device_type,
-                   first_seen, last_seen
+                   first_seen, last_seen, vendor, icon, attributes
             FROM devices
             WHERE id = ?
             """,
@@ -71,6 +71,9 @@ def get_device(device_id: str):
             device_type=row[5],
             first_seen=row[6],
             last_seen=row[7],
+            vendor=row[8],
+            icon=row[9],
+            attributes=row[10],
         )
     finally:
         conn.close()
@@ -101,6 +104,14 @@ def update_device(device_id: str, payload: DeviceUpdate):
         if payload.device_type is not None:
             updates.append("device_type = ?")
             params.append(payload.device_type)
+
+        if payload.vendor is not None:
+            updates.append("vendor = ?")
+            params.append(payload.vendor)
+
+        if payload.icon is not None:
+            updates.append("icon = ?")
+            params.append(payload.icon)
             
         if not updates:
             # no-op

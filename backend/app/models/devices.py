@@ -11,9 +11,13 @@ class DeviceRead(BaseModel):
     device_type: Optional[str] = None
     first_seen: Optional[datetime] = None
     last_seen: Optional[datetime] = None
+    vendor: Optional[str] = None
+    icon: Optional[str] = None
     attributes: Optional[str] = "{}"
 
 class DeviceUpdate(BaseModel):
     name: Optional[str] = None
     display_name: Optional[str] = None
     device_type: Optional[str] = None
+    vendor: Optional[str] = None
+    icon: Optional[str] = None

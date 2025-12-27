@@ -29,6 +29,8 @@ def cleanup_stale_scans():
 async def on_startup():
     cleanup_stale_scans()
     init_db()
+    from app.services.oui_downloader import ensure_oui_data
+    asyncio.create_task(ensure_oui_data())
     asyncio.create_task(scheduler_loop())
     asyncio.create_task(scan_runner_loop())
     

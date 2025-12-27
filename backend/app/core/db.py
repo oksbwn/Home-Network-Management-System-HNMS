@@ -33,6 +33,24 @@ def init_db() -> None:
         print(f"Loading schema from {settings.db_schema_path}...")
         schema_sql = Path(settings.db_schema_path).read_text(encoding="utf-8")
         conn.execute(schema_sql)
+        
+        # Migrations
+        migrate_db(conn)
+        
         print("Database initialized successfully.")
     finally:
         conn.close()
+
+def migrate_db(conn: duckdb.DuckDBPyConnection) -> None:
+    """Adds missing columns to existing tables."""
+    # Check if vendor/icon exist in devices
+    cols = conn.execute("PRAGMA table_info('devices')").fetchall()
+    col_names = [c[1] for c in cols]
+    
+    if 'vendor' not in col_names:
+        print("Migration: Adding 'vendor' column to 'devices'")
+        conn.execute("ALTER TABLE devices ADD COLUMN vendor TEXT")
+    
+    if 'icon' not in col_names:
+        print("Migration: Adding 'icon' column to 'devices'")
+        conn.execute("ALTER TABLE devices ADD COLUMN icon TEXT")

@@ -3,9 +3,20 @@ import asyncio
 import subprocess
 import re
 import ipaddress
+import socket
+from typing import Optional, List, Dict, Any
 from uuid import uuid4
 from datetime import datetime, timezone
 from app.core.db import get_connection
+
+async def resolve_hostname(ip: str) -> Optional[str]:
+    """Tries to resolve IP to hostname."""
+    try:
+        # Using a small timeout implicitly via asyncio.to_thread and gethostbyaddr
+        res = await asyncio.to_thread(socket.gethostbyaddr, ip)
+        return res[0]
+    except:
+        return None
 
 # Conditional import of scapy
 try:
@@ -106,13 +117,16 @@ async def run_scan_job(scan_id: str, target: str, scan_type: str) -> None:
 
         # 3. Process Results
         unique_devices = {d["ip"]: d for d in discovered_devices}.values()
-        print(f"DEBUG: Final unique devices found: {len(unique_devices)}")
+        mac_count = sum(1 for d in unique_devices if d["mac"])
+        print(f"DEBUG: Found {len(unique_devices)} unique devices. MACs found: {mac_count}")
 
         for device in unique_devices:
             ip = device["ip"]
             mac = device["mac"]
-            hostname = device["hostname"]
-            ports_list = []
+            
+            # 4. Resolve Hostname
+            hostname = await resolve_hostname(ip)
+            ports_list = [] # Port mapping can be added here later if needed
 
             result_id = str(uuid4())
             conn.execute(

@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS devices (
     first_seen    TIMESTAMP,
     last_seen     TIMESTAMP,
     internet_path TEXT,
+    vendor        TEXT,
+    icon          TEXT,
     attributes    TEXT
 );
 
@@ -65,4 +67,11 @@ CREATE TABLE IF NOT EXISTS scan_schedules (
     enabled          BOOLEAN NOT NULL DEFAULT TRUE,
     last_run_at      TIMESTAMP,
     next_run_at      TIMESTAMP
+);
+
+-- mac_vendors (IEEE OUI cache)
+CREATE TABLE IF NOT EXISTS mac_vendors (
+    oui         TEXT PRIMARY KEY,
+    vendor      TEXT NOT NULL,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
