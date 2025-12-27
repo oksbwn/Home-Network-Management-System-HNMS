@@ -81,6 +81,29 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Pagination Controls -->
+    <div v-if="totalPages > 1" class="flex justify-center items-center space-x-6 py-4">
+      <button 
+        @click="changePage(currentPage - 1)" 
+        :disabled="currentPage <= 1"
+        class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition dark:bg-slate-800 dark:border-slate-700 dark:text-gray-300 dark:hover:bg-slate-700"
+      >
+        <span>Previous</span>
+      </button>
+      
+      <div class="text-sm font-medium text-gray-600 dark:text-gray-400">
+        Page <span class="text-gray-900 dark:text-white">{{ currentPage }}</span> of {{ totalPages }}
+      </div>
+
+      <button 
+        @click="changePage(currentPage + 1)" 
+        :disabled="currentPage >= totalPages"
+        class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition dark:bg-slate-800 dark:border-slate-700 dark:text-gray-300 dark:hover:bg-slate-700"
+      >
+        <span>Next</span>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -95,19 +118,40 @@ const scanResults = reactive({})
 const loadingResults = reactive({})
 const resultsCount = reactive({})
 
+// Pagination state
+const currentPage = ref(1)
+const totalPages = ref(1)
+const limit = ref(10)
+
 const fetchScans = async () => {
     errorMessage.value = ''
     try {
-        const res = await axios.get('/api/v1/scans/')
-        scans.value = res.data
+        const res = await axios.get('/api/v1/scans/', {
+            params: {
+                page: currentPage.value,
+                limit: limit.value
+            }
+        })
+        scans.value = res.data.items
+        totalPages.value = res.data.total_pages
+        currentPage.value = res.data.page
+
         // Fetch counts for all done scans
-        res.data.forEach(scan => {
-            if (scan.status === 'done') fetchCount(scan.id)
+        res.data.items.forEach(scan => {
+            if (scan.status === 'done' && resultsCount[scan.id] === undefined) {
+                fetchCount(scan.id)
+            }
         })
     } catch (e) {
         console.error(e)
         errorMessage.value = 'Failed to load scan history. The backend might be restarting.'
     }
+}
+
+const changePage = (page) => {
+    if (page < 1 || page > totalPages.value) return
+    currentPage.value = page
+    fetchScans()
 }
 
 const clearQueue = async () => {

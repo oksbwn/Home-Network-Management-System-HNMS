@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from app.core.db import get_connection
-from app.models.scans import ScanCreate, ScanRead, ScanResultRead
+from app.models.scans import ScanCreate, ScanRead, ScanResultRead, PaginatedScansResponse
 from datetime import datetime, timezone
 import json, uuid
 
@@ -131,27 +131,30 @@ def create_scan(payload: ScanCreate):
     finally:
         conn.close()
 
-@router.get("/")
-def list_scans():
+@router.get("/", response_model=PaginatedScansResponse)
+def list_scans(page: int = 1, limit: int = 20):
+    offset = (page - 1) * limit
     conn = get_connection()
     try:
+        total = conn.execute("SELECT COUNT(*) FROM scans").fetchone()[0]
         rows = conn.execute(
             """
             SELECT id, target, scan_type, options, status,
                    created_at, started_at, finished_at, error_message
-            FROM scans ORDER BY created_at DESC
-            """
+            FROM scans 
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+            """,
+            [limit, offset]
         ).fetchall()
-        print(f"DEBUG SCANS: Fetched {len(rows)} rows from database.")
+        print(f"DEBUG SCANS: Fetched {len(rows)}/ {total} rows from database (page {page}).")
     except Exception as e:
         print(f"DEBUG ERROR: Failed to fetch scans from DB: {e}")
-        return []
+        return PaginatedScansResponse(items=[], total=0, page=page, limit=limit, total_pages=0)
     finally:
         conn.close()
 
-    result = []
-    # ... previous logic ... (rest of the function remains similar but within result list construction)
-    # I will replace the whole block for clarity
+    items = []
     for r in rows:
         try:
             options = json.loads(r[3]) if (len(r) > 3 and r[3]) else None
@@ -169,7 +172,7 @@ def list_scans():
                         return None
                 return dt
 
-            item = {
+            item_dict = {
                 "id": r[0],
                 "target": r[1],
                 "scan_type": r[2],
@@ -181,16 +184,23 @@ def list_scans():
                 "error_message": r[8],
             }
             try:
-                ScanRead(**item)
-                result.append(item)
+                items.append(ScanRead(**item_dict))
             except Exception as val_err:
                 print(f"DEBUG VALIDATION ERROR for scan {r[0]}: {val_err}")
-                result.append(item)
+                # Try to append anyway if it's mostly correct, or skip
+                # items.append(item_dict) - ScanRead expects specific types
+                pass
         except Exception as e:
             print(f"DEBUG ERROR: Failed to process scan row {r[0]}: {e}")
             continue
             
-    return result
+    return PaginatedScansResponse(
+        items=items,
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=(total + limit - 1) // limit
+    )
 
 @router.delete("/queue")
 def clear_scan_queue():

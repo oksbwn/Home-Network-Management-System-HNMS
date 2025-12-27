@@ -28,3 +28,10 @@ class ScanResultRead(BaseModel):
     os: str | None = None
     first_seen: datetime
     last_seen: datetime
+
+class PaginatedScansResponse(BaseModel):
+    items: list[ScanRead]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
