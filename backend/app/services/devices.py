@@ -47,8 +47,12 @@ async def upsert_device_from_scan(
     if existing_device:
         device_id, first_seen, last_seen, old_ip, attributes = existing_device
         
+        # Ensure last_seen is timezone-aware for comparison
+        if last_seen and last_seen.tzinfo is None:
+            last_seen = last_seen.replace(tzinfo=timezone.utc)
+            
         # Check if it was offline for a while? (e.g. > 10 mins)
-        time_diff = (now - last_seen).total_seconds()
+        time_diff = (now - last_seen).total_seconds() if last_seen else 999999
         if time_diff > 300: 
             is_came_online = True
             

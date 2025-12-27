@@ -2,8 +2,16 @@
   <div>
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Devices</h1>
-      <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-        Scan Now
+      <button 
+        @click="triggerScan" 
+        :disabled="isScanning"
+        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+      >
+        <svg v-if="isScanning" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {{ isScanning ? 'Scanning...' : 'Scan Now' }}
       </button>
     </div>
 
@@ -51,17 +59,52 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
-import { formatDistanceToNow } from 'date-fns' // Need to ensure user installs this or write basic formatter
 
 const devices = ref([])
+const isScanning = ref(false)
+
+const fetchDevices = async () => {
+    try {
+        const res = await axios.get('/api/v1/devices/')
+        devices.value = res.data
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+const checkActiveScan = async () => {
+    try {
+        const res = await axios.get('/api/v1/scans/')
+        // If any scan is queued or running, set isScanning to true
+        isScanning.value = res.data.some(s => s.status === 'queued' || s.status === 'running')
+    } catch (e) {
+        console.error('Failed to check active scans', e)
+    }
+}
+
+const triggerScan = async () => {
+    isScanning.value = true
+    try {
+        const res = await axios.post('/api/v1/scans/discovery')
+        if (res.data.status === 'already_active') {
+             alert(res.data.message)
+        } else {
+             alert('Scan initiated Successfully!')
+        }
+    } catch (error) {
+        console.error('Scan failed:', error)
+        alert('Failed to initiate scan')
+    } finally {
+        await checkActiveScan()
+    }
+}
 
 const isOnline = (d) => {
     if (!d.last_seen) return false
-    const diff = new Date() - new Date(d.last_seen) // Assuming backend sends ISO?
-    // backend sends string probably without Z if naive, but we used timezone.utc
-    // Let's assume standard ISO
+    const lastSeenDate = new Date(d.last_seen)
+    const diff = new Date() - lastSeenDate
     return diff < 300000 // 5 mins
 }
 
@@ -72,12 +115,19 @@ const formatTime = (t) => {
     } catch { return t }
 }
 
-onMounted(async () => {
-    try {
-        const res = await axios.get('/api/v1/devices/')
-        devices.value = res.data
-    } catch (e) {
-        console.error(e)
-    }
+let pollInterval = null
+
+onMounted(() => {
+    fetchDevices()
+    checkActiveScan()
+    // Poll for active scan status every 10 seconds
+    pollInterval = setInterval(() => {
+        checkActiveScan()
+        fetchDevices() // Also update device list during scan
+    }, 10000)
+})
+
+onUnmounted(() => {
+    if (pollInterval) clearInterval(pollInterval)
 })
 </script>

@@ -31,6 +31,11 @@ const routes = [
         path: 'settings',
         name: 'Settings',
         component: () => import('@/views/Settings.vue')
+      },
+      {
+        path: 'scans',
+        name: 'ScanHistory',
+        component: () => import('@/views/ScanHistory.vue')
       }
     ]
   }

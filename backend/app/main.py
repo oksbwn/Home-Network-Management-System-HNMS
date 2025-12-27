@@ -9,8 +9,25 @@ from app.services.worker import scheduler_loop, scan_runner_loop
 
 app = FastAPI(title="Network Scanner API")
 
+def cleanup_stale_scans():
+    from app.core.db import get_connection
+    from datetime import datetime, timezone
+    print("DEBUG: Cleaning up stale scans from previous run...")
+    conn = get_connection()
+    try:
+        # Mark running or queued scans as interrupted on startup
+        conn.execute(
+            "UPDATE scans SET status = 'interrupted', finished_at = ?, error_message = 'Interrupted by server restart' WHERE status IN ('running', 'queued')",
+            [datetime.now(timezone.utc)]
+        )
+    except Exception as e:
+        print(f"DEBUG ERROR during startup cleanup: {e}")
+    finally:
+        conn.close()
+
 @app.on_event("startup")
 async def on_startup():
+    cleanup_stale_scans()
     init_db()
     asyncio.create_task(scheduler_loop())
     asyncio.create_task(scan_runner_loop())

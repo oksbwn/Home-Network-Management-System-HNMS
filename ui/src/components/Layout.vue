@@ -58,7 +58,8 @@ import {
   ComputerDesktopIcon, 
   TableCellsIcon, 
   Cog6ToothIcon,
-  Bars3Icon
+  Bars3Icon,
+  ListBulletIcon
 } from '@heroicons/vue/24/outline'
 
 const mobileMenuOpen = ref(false)
@@ -66,6 +67,7 @@ const mobileMenuOpen = ref(false)
 const navItems = [
   { name: 'Dashboard', path: '/', icon: HomeIcon },
   { name: 'Devices', path: '/devices', icon: ComputerDesktopIcon },
+  { name: 'Scan History', path: '/scans', icon: ListBulletIcon },
   { name: 'IP Occupancy', path: '/occupancy', icon: TableCellsIcon },
   { name: 'Settings', path: '/settings', icon: Cog6ToothIcon },
 ]

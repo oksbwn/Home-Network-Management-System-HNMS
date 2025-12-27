@@ -5,7 +5,7 @@ uvicorn
 duckdb
 pydantic-settings
 
-python-nmap
+scapy
 
 # optional but recommended
 python-dotenv
