@@ -90,7 +90,7 @@ HNMS acts as a bridge between your network and your smart home.
 > [!TIP]
 > Use the **Home Assistant Discovery** feature to instantly see network presence as binary sensors in your HA Dashboard.
 
-![Home Assistant Discovery](./.img/home-assistant.png)
+![Home Assistant Discovery](./.img/HA%20Dsicovery.png)
 
 | Topic Pattern | Description |
 | :--- | :--- |
