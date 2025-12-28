@@ -1,48 +1,136 @@
-# Home Network Management System (HNMS)
+# 🛡️ Home Network Management System (HNMS)
 
-A web-based home network management system for scanning devices, tracking history, and managing network configuration.
+<div align="center">
 
-## Tech Stack
-- **Backend:** FastAPI, DuckDB
-- **Frontend:** Vue 3, Vite, Tailwind CSS
+[![Version](https://img.shields.io/badge/version-0.3.1-blue.svg)](VERSION)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-monolith-green.svg)](Dockerfile)
+[![Vue](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)](ui/)
+[![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](backend/)
+
+**A professional-grade, web-based network monitoring and security suite for the modern home.**
+
+[Explore Features](#-detailed-usage-guide) • [Quick Start](#️-quick-start-docker) • [Developer Guide](#-manual-development-setup)
+
+</div>
 
 ---
 
-## Backend Setup
+![Dashboard Overview](./.img/dashboard.png)
 
-### 1. Install Dependencies
-Ensure you have Python installed. Run the following in the `backend` directory:
+HNMS is designed to give you total visibility over your local network. It combines real-time Nmap scanning with persistent historical tracking to provide a comprehensive security audit of every device in your home.
+
+## 📑 Table of Contents
+- [✨ Key Features](#-key-features)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [📸 Gallery](#-gallery)
+- [📘 Detailed Usage Guide](#-detailed-usage-guide)
+- [🚀 Quick Start (Docker)](#️-quick-start-docker)
+- [💻 Manual Development Setup](#-manual-development-setup)
+- [📂 Project Structure](#-project-structure)
+
+---
+
+## ✨ Key Features
+
+| Feature | Description |
+| :--- | :--- |
+| **Real-time Discovery** | Automated Nmap-powered scanning for instant device detection. |
+| **Deep Intelligence** | Service-level fingerprinting to identify types, vendors, and OS hints. |
+| **Connectivity History** | Visual uptime trends and event logs (Join/Disconnect). |
+| **Smart Classification** | 20+ custom vector icons and auto-categorization. |
+| **Monolithic Packaging** | Single-container deployment with SPA routing and integrated persistence. |
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: [Vue 3](https://vuejs.org/) (Composition API), [Vite](https://vitejs.dev/), [Tailwind CSS](https://tailwindcss.com/)
+- **Backend**: [FastAPI](https://fastapi.tiangolo.com/), [Uvicorn](https://www.uvicorn.org/)
+- **Database**: [DuckDB](https://duckdb.org/) (High-performance analytical storage)
+- **Scanning Engine**: [Nmap](https://nmap.org/)
+- **Integration**: [MQTT](https://mqtt.org/) (Paho), [Home Assistant Discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery)
+
+---
+
+## 📸 Gallery
+
+### Device Management
+![Device List](./.img/devices.png)
+*Granular control over your network inventory with vendor-specific metadata.*
+
+### High-Fidelity Analytics
+![Device Identification](./.img/device-details.png)
+*Sub-second precision on device availability and deep port audit history.*
+
+### Activity Trends
+![Events Log](./.img/events.png)
+*Visualize spikes in network movement and monitor hardware stability.*
+
+---
+
+## 📘 Detailed Usage Guide
+
+### 📊 Dashboard & Analytics
+The Hub for your network health.
+- **Sparklines**: Integrated trend lines within metric cards reveal 24-hour activity patterns.
+- **Live Feed**: Pulsing activity log monitors current worker status.
+
+### 🔍 Device Management
+- **Audit Trigger**: Initiate manual scans to force a directory refresh.
+- **Deep Audit**: Probes 1000+ ports; captures banner metadata for precise identification.
+
+### 📡 MQTT Integration & Automation
+HNMS acts as a bridge between your network and your smart home.
+
+> [!TIP]
+> Use the **Home Assistant Discovery** feature to instantly see network presence as binary sensors in your HA Dashboard.
+
+| Topic Pattern | Description |
+| :--- | :--- |
+| `{base}/device/{mac}/state` | Broadcasts `home` / `not_home`. |
+| `{base}/device/{mac}/attributes` | Rich JSON containing IP, Vendor, and OS details. |
+
+---
+
+## 🚀 Quick Start (Docker)
+
+> [!IMPORTANT]
+> For Linux deployments, use `network_mode: host` in `docker-compose.yml` to allow the scanner full access to the network interface.
+
 ```bash
+docker-compose up -d
+```
+Access at: [http://localhost:8000](http://localhost:8000)
+
+---
+
+## 💻 Manual Development Setup
+
+### Backend (FastAPI)
+```bash
+cd backend
 pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8001
 ```
 
-### 2. Run the App
-Start the FastAPI server:
+### Frontend (Vue 3)
 ```bash
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
-```
-The backend will be available at [http://localhost:8001](http://localhost:8001).
-
----
-
-## Frontend Setup
-
-### 1. Install Dependencies
-Ensure you have Node.js installed. Run the following in the `ui` directory:
-```bash
+cd ui
 npm install
-```
-
-### 2. Run the App
-Start the Vite development server:
-```bash
 npm run dev
 ```
-The frontend will be available at [http://localhost:5173](http://localhost:5173).
 
 ---
 
-## Project Structure
-- `/backend`: FastAPI application and DuckDB database.
-- `/ui`: Vue 3 frontend application.
-- `/data`: Database storage location.
+## 📂 Project Structure
+- `/backend`: Analytical core and scanning workers.
+- `/ui`: Modern glassmorphism interface.
+- `/.img`: Optimized local asset storage.
+- `publish.sh`: Automated CI/CD versioning script.
+
+---
+
+<div align="center">
+Built with ❤️ for the Home Automation Community
+</div>
