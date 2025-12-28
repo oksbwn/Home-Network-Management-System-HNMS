@@ -9,15 +9,17 @@
       <div class="flex items-center gap-3">
         <div class="flex bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
           <button @click="exportDevices"
-            class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-l-lg transition text-slate-600 dark:text-slate-400"
+            class="px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-l-lg transition text-slate-600 dark:text-slate-400 flex items-center gap-2 text-xs font-medium"
             v-tooltip="'Export Devices to JSON'">
             <Download class="h-4 w-4" />
+            <span class="hidden sm:inline">Export</span>
           </button>
           <div class="w-px bg-slate-200 dark:bg-slate-700"></div>
           <button @click="$refs.importInput.click()"
-            class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-r-lg transition text-slate-600 dark:text-slate-400"
+            class="px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-r-lg transition text-slate-600 dark:text-slate-400 flex items-center gap-2 text-xs font-medium"
             v-tooltip="'Import Devices from JSON'">
             <Upload class="h-4 w-4" />
+            <span class="hidden sm:inline">Import</span>
           </button>
         </div>
         <input type="file" ref="importInput" class="hidden" @change="handleImport" accept=".json" />
@@ -38,6 +40,16 @@
         <line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
       <span>{{ error }}</span>
+    </div>
+
+    <!-- Success Alert -->
+    <div v-if="successMessage"
+      class="p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-900/30 text-sm flex items-center gap-3">
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+        <polyline points="22 4 12 14.01 9 11.01" />
+      </svg>
+      <span>{{ successMessage }}</span>
     </div>
 
     <!-- Quick Stats -->
@@ -87,6 +99,9 @@
                 Network Info</th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Open Ports</th>
+              <th
+                class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Type</th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -126,6 +141,18 @@
                 <div class="text-xs text-slate-500 font-mono truncate max-w-[200px]">{{ device.mac || 'N/A' }}</div>
               </td>
               <td class="px-6 py-4">
+                <div v-if="device.open_ports && device.open_ports.length > 0" class="flex flex-wrap gap-1">
+                  <span v-for="port in device.open_ports.slice(0, 3)" :key="typeof port === 'object' ? port.port : port"
+                    class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 uppercase">
+                    {{ typeof port === 'object' ? (port.service || port.port) : port }}
+                  </span>
+                  <span v-if="device.open_ports.length > 3" class="text-[10px] text-slate-500 self-center">
+                    +{{ device.open_ports.length - 3 }}
+                  </span>
+                </div>
+                <span v-else class="text-xs text-slate-400 italic">No ports</span>
+              </td>
+              <td class="px-6 py-4">
                 <span
                   class="inline-flex px-2 py-1 text-xs font-medium rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                   {{ device.device_type || 'Unknown' }}
@@ -135,19 +162,19 @@
                 {{ formatRelativeTime(device.last_seen) }}
               </td>
               <td class="px-6 py-4 text-right" @click.stop>
-                <div class="flex items-center justify-end gap-3">
+                <div class="flex items-center justify-end gap-1">
                   <router-link :to="{ name: 'DeviceDetails', params: { id: device.id } }"
-                    class="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
+                    class="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
                     v-tooltip="'View Device Details'">
                     <Eye class="h-4 w-4" />
                   </router-link>
                   <button @click.stop="openEditDialog(device)"
-                    class="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                    class="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
                     v-tooltip="'Edit Device Name & Type'">
                     <Pencil class="h-4 w-4" />
                   </button>
                   <button @click.stop="confirmDelete(device)"
-                    class="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                    class="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                     v-tooltip="'Delete Device'">
                     <Trash2 class="h-4 w-4" />
                   </button>
@@ -160,54 +187,8 @@
     </div>
 
     <!-- Edit Modal -->
-    <div v-if="editingDevice" class="fixed inset-0 z-50 overflow-y-auto" @click.self="editingDevice = null">
-      <div class="flex min-h-screen items-center justify-center p-4">
-        <div class="fixed inset-0 bg-black/50 transition-opacity"></div>
-        <div class="relative bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-lg w-full">
-          <div class="p-6 border-b border-slate-200 dark:border-slate-700">
-            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Edit Device</h3>
-          </div>
-          <div class="p-6 space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Display Name</label>
-              <input v-model="editForm.display_name" type="text"
-                class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Device Type</label>
-              <select v-model="editForm.device_type"
-                class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-                <option value="unknown">Unknown</option>
-                <option value="Router/Gateway">Router/Gateway</option>
-                <option value="Desktop">Desktop</option>
-                <option value="Laptop">Laptop</option>
-                <option value="Mobile">Mobile</option>
-                <option value="IoT">IoT Device</option>
-                <option value="Printer">Printer</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Icon</label>
-              <select v-model="editForm.icon"
-                class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-                <option v-for="icon in availableIcons" :key="icon" :value="icon">{{ icon }}</option>
-              </select>
-            </div>
-          </div>
-          <div
-            class="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3 border-t border-slate-200 dark:border-slate-700">
-            <button @click="editingDevice = null"
-              class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-              Cancel
-            </button>
-            <button @click="saveDevice" :disabled="saving"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-sm font-medium transition-colors">
-              {{ saving ? 'Saving...' : 'Save Changes' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <EditDeviceModal :isOpen="isEditModalOpen" :device="deviceToEdit" @close="isEditModalOpen = false"
+      @save="handleDeviceSaved" />
     <!-- Delete Confirmation Modal -->
     <div v-if="deviceToDelete" class="fixed inset-0 z-50 overflow-y-auto" @click.self="cancelDelete">
       <div class="flex min-h-screen items-center justify-center p-4">
@@ -243,21 +224,61 @@
 import { ref, onMounted, onUnmounted, reactive, computed } from 'vue'
 import axios from 'axios'
 import Sparkline from '@/components/Sparkline.vue'
-import { Download, Upload, RefreshCw, Loader2, Smartphone, Tablet, Laptop, Monitor, Server, Router as RouterIcon, Network, Layers, Rss, Tv, Cpu, Printer, HardDrive, Gamepad2, HelpCircle, Lightbulb, Plug, Microchip, Camera, Waves, Speaker, Play, Eye, Pencil, Database, Wifi, ZapOff, Ticket, Trash2 } from 'lucide-vue-next'
+import EditDeviceModal from '@/components/EditDeviceModal.vue'
+import * as LucideIcons from 'lucide-vue-next'
+const { Eye, Pencil, Trash2, Download, Upload, RefreshCw, Loader2 } = LucideIcons
 import { formatRelativeTime } from '@/utils/date'
 
 const devices = ref([])
 const error = ref('')
 const isScanning = ref(false)
-const editingDevice = ref(null)
-const editForm = reactive({ display_name: '', device_type: '', icon: '' })
-const saving = ref(false)
+const isEditModalOpen = ref(false)
+const deviceToEdit = ref(null)
+const successMessage = ref('')
 
-const availableIcons = ['smartphone', 'tablet', 'laptop', 'monitor', 'server', 'router', 'network', 'layers', 'rss', 'tv', 'cpu', 'printer', 'hard-drive', 'gamepad-2', 'lightbulb', 'plug', 'microchip', 'camera', 'waves', 'speaker', 'play', 'help-circle']
+const getIcon = (name) => {
+  if (!name) return LucideIcons.HelpCircle
+  // Direct match (PascalCase)
+  if (LucideIcons[name]) return LucideIcons[name]
+  // Legacy mapping (kebab-case -> PascalCase or map)
+  const legacyMap = {
+    'smartphone': 'Smartphone',
+    'tablet': 'Tablet',
+    'laptop': 'Laptop',
+    'monitor': 'Monitor',
+    'server': 'Server',
+    'router': 'Router',
+    'network': 'Network',
+    'layers': 'Layers',
+    'rss': 'Rss',
+    'tv': 'Tv',
+    'speaker': 'Speaker',
+    'play': 'Play',
+    'cpu': 'Cpu',
+    'lightbulb': 'Lightbulb',
+    'plug': 'Plug',
+    'microchip': 'Microchip',
+    'camera': 'Camera',
+    'waves': 'Waves',
+    'printer': 'Printer',
+    'hard-drive': 'HardDrive',
+    'gamepad-2': 'Gamepad2',
+    'help-circle': 'HelpCircle',
+    'computer-desktop': 'Monitor', // HeroIcons compat
+    'device-laptop': 'Laptop',
+    'device-phone-mobile': 'Smartphone',
+    'device-tablet': 'Tablet',
+    'server-stack': 'Database',
+    'bolt': 'Zap'
+  }
+  if (legacyMap[name] && LucideIcons[legacyMap[name]]) return LucideIcons[legacyMap[name]]
 
-const iconMap = { smartphone: Smartphone, tablet: Tablet, laptop: Laptop, monitor: Monitor, server: Server, router: RouterIcon, network: Network, layers: Layers, rss: Rss, tv: Tv, speaker: Speaker, play: Play, cpu: Cpu, lightbulb: Lightbulb, plug: Plug, microchip: Microchip, camera: Camera, waves: Waves, printer: Printer, 'hard-drive': HardDrive, 'gamepad-2': Gamepad2, 'help-circle': HelpCircle }
+  // Auto convert kebab to Pascal
+  const camel = name.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('')
+  if (LucideIcons[camel]) return LucideIcons[camel]
 
-const getIcon = (name) => iconMap[name] || HelpCircle
+  return LucideIcons.HelpCircle
+}
 
 const getDeviceStatusColor = (device) => {
   if (device.status === 'online') return 'bg-emerald-500'
@@ -289,7 +310,7 @@ const deviceStats = computed(() => {
     {
       label: 'Total Devices',
       value: total,
-      icon: Database,
+      icon: LucideIcons.Database,
       color: '#3b82f6',
       bgClass: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
       trend: [10, 12, 11, 13, 12, 14, 13, 15, 14, 16],
@@ -299,7 +320,7 @@ const deviceStats = computed(() => {
     {
       label: 'Online',
       value: online,
-      icon: Wifi,
+      icon: LucideIcons.Wifi,
       color: '#10b981',
       bgClass: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
       trend: [8, 9, 7, 10, 9, 11, 10, 12, 11, 13],
@@ -309,7 +330,7 @@ const deviceStats = computed(() => {
     {
       label: 'Offline',
       value: offline,
-      icon: ZapOff,
+      icon: LucideIcons.ZapOff,
       color: '#f43f5e',
       bgClass: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',
       trend: [2, 3, 4, 3, 3, 3, 3, 3, 3, 3],
@@ -319,7 +340,7 @@ const deviceStats = computed(() => {
     {
       label: 'Top Vendor',
       value: topVendor.length > 10 ? topVendor.substring(0, 8) + '..' : topVendor,
-      icon: Ticket,
+      icon: LucideIcons.Ticket,
       color: '#8b5cf6',
       bgClass: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
       trend: [5, 6, 5, 7, 6, 8, 7, 9, 8, 10],
@@ -376,24 +397,20 @@ const deleteDevice = async () => {
   }
 }
 
+
 const openEditDialog = (device) => {
-  editingDevice.value = device
-  editForm.display_name = device.display_name
-  editForm.device_type = device.device_type || 'unknown'
-  editForm.icon = device.icon || 'help-circle'
+  deviceToEdit.value = device
+  isEditModalOpen.value = true
 }
 
-const saveDevice = async () => {
-  saving.value = true
-  try {
-    await axios.put(`/api/v1/devices/${editingDevice.value.id}`, editForm)
-    await fetchDevices()
-    editingDevice.value = null
-  } catch (e) {
-    error.value = 'Failed to save device'
-  } finally {
-    saving.value = false
+const handleDeviceSaved = (updatedDevice) => {
+  // Update local list
+  const idx = devices.value.findIndex(d => d.id === updatedDevice.id)
+  if (idx !== -1) {
+    devices.value[idx] = updatedDevice
   }
+  successMessage.value = 'Device updated successfully'
+  setTimeout(() => successMessage.value = '', 3000)
 }
 
 const exportDevices = () => {

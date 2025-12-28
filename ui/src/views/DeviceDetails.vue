@@ -10,7 +10,8 @@
         </svg>
       </router-link>
       <div class="flex-1">
-        <h1 class="text-2xl font-semibold text-slate-900 dark:text-white">{{ form.display_name || 'Device Details' }}</h1>
+        <h1 class="text-2xl font-semibold text-slate-900 dark:text-white">{{ form.display_name || 'Device Details' }}
+        </h1>
         <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ device.ip }}</p>
       </div>
       <div class="flex items-center gap-2">
@@ -18,6 +19,12 @@
           :class="device.status === 'online' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'">
           {{ device.status }}
         </span>
+        <button @click="runDeepScan" :disabled="isScanning"
+          class="px-4 py-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          v-tooltip="'Scan top 1000 ports'">
+          <component :is="isScanning ? Loader2 : Scan" class="w-4 h-4" :class="{ 'animate-spin': isScanning }" />
+          {{ isScanning ? 'Scanning...' : 'Deep Scan' }}
+        </button>
         <button @click="saveChanges"
           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
           v-tooltip="'Save Device Changes'">
@@ -36,18 +43,18 @@
             <input v-model="form.display_name" type="text"
               class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
           </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">IP Assignment</label>
-              <select v-model="form.attributes.ip_allocation"
-                class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none">
-                <option :value="undefined">Unknown</option>
-                <option value="static">Static IP</option>
-                <option value="dhcp">DHCP</option>
-              </select>
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hostname</label>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">IP Assignment</label>
+            <select v-model="form.attributes.ip_allocation"
+              class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none">
+              <option :value="undefined">Unknown</option>
+              <option value="static">Static IP</option>
+              <option value="dhcp">DHCP</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hostname</label>
             <input v-model="form.name" type="text"
               class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
           </div>
@@ -121,6 +128,7 @@ import { ref, onMounted, reactive, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
 import TerminalModal from '../components/TerminalModal.vue'
+import { Scan, Loader2 } from 'lucide-vue-next'
 
 const route = useRoute()
 const device = ref(null)
@@ -129,21 +137,45 @@ const sshPort = ref(22)
 
 const form = reactive({ display_name: '', name: '', device_type: '', attributes: {} })
 
+const isScanning = ref(false)
+
 const parsedPorts = computed(() => {
   if (!device.value || !device.value.open_ports) return []
-  try {
-    const parsed = JSON.parse(device.value.open_ports)
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      if (typeof parsed[0] === 'number') {
-        return parsed.map(p => ({ port: p, service: 'Unknown', protocol: 'TCP' }))
-      }
-      return parsed
+
+  let data = device.value.open_ports
+  // If it's a string, parse it. If it's already an array (from new backend), use it.
+  if (typeof data === 'string') {
+    try {
+      data = JSON.parse(data)
+    } catch {
+      return []
     }
-    return []
-  } catch {
-    return []
   }
+
+  if (Array.isArray(data) && data.length > 0) {
+    if (typeof data[0] === 'number') {
+      const commonMap = { 21: 'FTP', 22: 'SSH', 23: 'Telnet', 25: 'SMTP', 53: 'DNS', 80: 'HTTP', 443: 'HTTPS', 445: 'SMB', 3000: 'React', 8080: 'Web', 3306: 'MySQL', 5432: 'Postgres' }
+      return data.map(p => ({ port: p, service: commonMap[p] || 'Unknown', protocol: 'TCP' }))
+    }
+    // Already loaded as objects {port, service, protocol}
+    return data
+  }
+  return []
 })
+
+const runDeepScan = async () => {
+  if (isScanning.value) return
+  isScanning.value = true
+  try {
+    await axios.post(`/api/v1/scans/device/${device.value.id}`)
+    await fetchDevice() // Refresh details to show new ports
+    alert('Scan complete')
+  } catch (e) {
+    alert('Scan failed')
+  } finally {
+    isScanning.value = false
+  }
+}
 
 const openSSH = (port) => {
   sshPort.value = port
@@ -159,9 +191,9 @@ const fetchDevice = async () => {
     form.device_type = device.value.device_type || 'unknown'
     // Initialize attributes if missing
     try {
-        form.attributes = device.value.attributes ? JSON.parse(device.value.attributes) : {}
+      form.attributes = device.value.attributes ? JSON.parse(device.value.attributes) : {}
     } catch {
-        form.attributes = {}
+      form.attributes = {}
     }
     form.device_type = device.value.device_type || 'unknown'
   } catch (e) {

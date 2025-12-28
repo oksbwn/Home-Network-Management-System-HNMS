@@ -3,6 +3,7 @@ from app.core.db import get_connection
 from app.models.scans import ScanCreate, ScanRead, ScanResultRead, PaginatedScansResponse
 from datetime import datetime, timezone
 import json, uuid
+from app.services.scans import scan_device
 
 router = APIRouter()
 
@@ -258,3 +259,20 @@ def get_scan_results(scan_id: str):
         return result
     finally:
         conn.close()
+
+@router.post("/device/{device_id}")
+async def run_deep_scan(device_id: str):
+    """
+    Triggers a deep port scan (top 1000 ports) for a specific device.
+    """
+    conn = get_connection()
+    try:
+        row = conn.execute("SELECT ip FROM devices WHERE id = ?", [device_id]).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Device not found")
+        ip = row[0]
+    finally:
+        conn.close()
+        
+    ports = await scan_device(device_id, ip)
+    return {"device_id": device_id, "ip": ip, "open_ports": ports}

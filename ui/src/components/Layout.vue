@@ -24,7 +24,7 @@
                 $route.path === item.path || ($route.path.startsWith(item.path) && item.path !== '/')
                   ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
                   : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-              ]" v-tooltip="sidebarCollapsed ? item.name : ''">
+              ]" v-tooltip="sidebarCollapsed ? item.name : null">
               <component :is="item.icon" class="h-5 w-5 flex-shrink-0" :class="sidebarCollapsed ? '' : 'mr-3'" />
               <span v-if="!sidebarCollapsed">{{ item.name }}</span>
             </router-link>

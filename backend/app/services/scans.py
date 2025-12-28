@@ -275,3 +275,50 @@ async def run_scan_job(scan_id: str, target: str, scan_type: str) -> None:
         raise e
     finally:
         conn.close()
+async def scan_device(device_id: str, ip: str) -> List[Dict[str, Any]]:
+    """
+    Runs a deep scan on a specific device IP.
+    Returns list of open ports.
+    """
+    open_ports = []
+    
+    # We will check COMMON_PORTS.
+    # We use asyncio.wait_for to keep it fast.
+    semaphore = asyncio.Semaphore(50) # Limit concurrent sockets
+
+    async def check_port(port, name):
+        async with semaphore:
+            try:
+                # 1s timeout for LAN scan is plenty
+                fut = asyncio.open_connection(ip, port)
+                await asyncio.wait_for(fut, timeout=1.0)
+                return (port, name)
+            except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
+                return None
+
+    tasks = [check_port(p, n) for p, n in COMMON_PORTS.items()]
+    results = await asyncio.gather(*tasks)
+    
+    conn = get_connection()
+    try:
+        # Clear old ports for this device
+        conn.execute("DELETE FROM device_ports WHERE device_id = ?", [device_id])
+        
+        valid_results = [r for r in results if r is not None]
+        
+        for port, service in valid_results:
+            conn.execute(
+                "INSERT INTO device_ports (device_id, port, protocol, service) VALUES (?, ?, ?, ?)",
+                [device_id, port, 'tcp', service]
+            )
+            open_ports.append({"port": port, "service": service, "protocol": "tcp"})
+            
+        # Update device open_ports cache
+        simple_ports = [p["port"] for p in open_ports]
+        conn.execute("UPDATE devices SET open_ports = ? WHERE id = ?", [json.dumps(simple_ports), device_id])
+        
+        conn.commit()
+    finally:
+        conn.close()
+        
+    return open_ports

@@ -213,6 +213,58 @@ async def enrich_device(device_id: str, mac: str):
                     [vendor, new_type, new_icon, new_display, json.dumps(attrs), device_id]
                 )
                 logger.info(f"Successfully enriched {device_id} with {vendor}")
+            conn.commit()
         finally:
             conn.close()
+
+
+def update_device_fields(device_id: str, fields: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Updates specific fields of a device.
+    fields: dict containing 'display_name', 'device_type', 'icon', etc.
+    """
+    conn = get_connection()
+    try:
+        # 1. Verify existence.
+        row = conn.execute("SELECT id, attributes FROM devices WHERE id = ?", [device_id]).fetchone()
+        if not row:
+            return None
+            
+        # 2. Build Update Query dynamically
+        valid_cols = {'display_name', 'device_type', 'icon'}
+        updates = []
+        params = []
+        
+        for k, v in fields.items():
+            if k in valid_cols and v is not None:
+                updates.append(f"{k} = ?")
+                params.append(v)
+        
+        if not updates:
+            return {"id": device_id, "status": "no_changes"}
+
+        params.append(device_id)
+        sql = f"UPDATE devices SET {', '.join(updates)} WHERE id = ?"
+        conn.execute(sql, params)
+        conn.commit()
+        
+        # 3. Return updated device
+        updated = conn.execute(
+            "SELECT id, ip, mac, name, display_name, device_type, vendor, icon, status FROM devices WHERE id = ?", 
+            [device_id]
+        ).fetchone()
+        
+        return {
+            "id": updated[0],
+            "ip": updated[1],
+            "mac": updated[2],
+            "name": updated[3],
+            "display_name": updated[4],
+            "device_type": updated[5],
+            "vendor": updated[6],
+            "icon": updated[7],
+            "status": updated[8]
+        }
+    finally:
+        conn.close()
 

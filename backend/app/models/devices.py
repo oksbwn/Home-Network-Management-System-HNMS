@@ -14,8 +14,8 @@ class DeviceRead(BaseModel):
     vendor: Optional[str] = None
     icon: Optional[str] = None
     status: Optional[str] = "unknown"
-    open_ports: Optional[str] = "[]"
-    attributes: Optional[str] = "{}"
+    open_ports: Optional[list] = []
+    attributes: Optional[dict] = {}
 
 class DeviceUpdate(BaseModel):
     name: Optional[str] = None
