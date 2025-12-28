@@ -149,10 +149,19 @@ async def handle_queued_scans():
         scan_id, target, scan_type = row
         now = datetime.now(timezone.utc)
         
+        # Clean up stale running scans (older than 10 minutes)
+        stale_cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
+        conn.execute(
+            """
+            UPDATE scans SET status='error', finished_at=?, error_message='Stale scan auto-cleared'
+            WHERE status='running' AND started_at < ?
+            """,
+            [datetime.now(timezone.utc), stale_cutoff]
+        )
         # Check if something else is already running
         running_count = conn.execute("SELECT COUNT(*) FROM scans WHERE status = 'running'").fetchone()[0]
         if running_count >= 1:
-             return
+            return
 
         print(f"DEBUG WORKER: Picking up scan {scan_id}. Setting to 'running'.")
         conn.execute(

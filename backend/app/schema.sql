@@ -44,8 +44,16 @@ CREATE TABLE IF NOT EXISTS devices (
     internet_path TEXT,
     vendor        TEXT,
     icon          TEXT,
+    status TEXT DEFAULT 'unknown',
     open_ports    TEXT,
     attributes    TEXT
+);
+
+CREATE TABLE IF NOT EXISTS device_status_history (
+    id TEXT PRIMARY KEY,
+    device_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- device_ports

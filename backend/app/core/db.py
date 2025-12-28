@@ -58,3 +58,17 @@ def migrate_db(conn: duckdb.DuckDBPyConnection) -> None:
     if 'open_ports' not in col_names:
         print("Migration: Adding 'open_ports' column to 'devices'")
         conn.execute("ALTER TABLE devices ADD COLUMN open_ports TEXT")
+
+    if 'status' not in col_names:
+        print("Migration: Adding 'status' column to 'devices'")
+        conn.execute("ALTER TABLE devices ADD COLUMN status TEXT DEFAULT 'unknown'")
+
+    # Ensure device_status_history table exists (though schema.sql should handle it)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS device_status_history (
+            id TEXT PRIMARY KEY,
+            device_id TEXT NOT NULL,
+            status TEXT NOT NULL,
+            changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)

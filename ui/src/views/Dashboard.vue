@@ -46,11 +46,7 @@ onMounted(async () => {
         const res = await axios.get('/api/v1/devices/')
         const devices = res.data
         stats.value[0].value = devices.length
-        stats.value[1].value = devices.filter(d => {
-             if (!d.last_seen) return false
-             const diff = new Date() - new Date(d.last_seen + 'Z') // create UTC date
-             return diff < 300000 // 5 mins
-        }).length
+        stats.value[1].value = devices.filter(d => d.status === 'online').length
     } catch (e) {
         console.error(e)
     }

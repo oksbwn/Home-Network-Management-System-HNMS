@@ -198,6 +198,31 @@ async def run_scan_job(scan_id: str, target: str, scan_type: str) -> None:
             # upsert device
             from app.services.devices import upsert_device_from_scan
             await upsert_device_from_scan(ip, mac, hostname, ports_list)
+
+        # 6. Post-scan: Mark devices as offline if they were not seen in this scan
+        # We only do this for devices that were previously 'online'
+        # and whose last_seen is still older than this scan's start time.
+        from app.services.devices import record_status_change, publish_device_offline
+        
+        # We need to be careful not to mark everything offline if it was a targeted scan,
+        # but for now, let's assume discovery scans should refresh status.
+        offline_devices = conn.execute(
+            "SELECT id, ip, mac, display_name FROM devices WHERE status = 'online' AND last_seen < ?",
+            [now]
+        ).fetchall()
+        
+        for d_id, d_ip, d_mac, d_name in offline_devices:
+            print(f"DEBUG: Device {d_ip} ({d_id}) not seen in scan. Marking as OFFLINE.")
+            conn.execute("UPDATE devices SET status = 'offline' WHERE id = ?", [d_id])
+            record_status_change(conn, d_id, 'offline', datetime.now(timezone.utc))
+            publish_device_offline({
+                "id": d_id,
+                "ip": d_ip,
+                "mac": d_mac,
+                "hostname": d_name,
+                "status": "offline",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
             
     except Exception as e:
         print(f"DEBUG ERROR in run_scan_job {scan_id}: {e}")

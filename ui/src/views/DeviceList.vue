@@ -63,7 +63,7 @@
                   </div>
                   <span
                     class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-slate-800"
-                    :class="isOnline(device) ? 'bg-green-500' : 'bg-gray-300'"></span>
+                    :class="getDeviceStatusColor(device)"></span>
                 </div>
                 <div>
                   <div class="text-sm font-bold text-gray-900 dark:text-white">
@@ -340,6 +340,15 @@ const isOnline = (d) => {
   if (!d.last_seen) return false
   const lastSeenDate = new Date(d.last_seen)
   return (new Date() - lastSeenDate) < 300000 // 5 mins
+}
+// Determine the visual status color for a device
+// - Gray when a scan is in progress (pending)
+// - Green when the device was seen within the last 5 minutes (online)
+// - Red when the device is offline (not seen recently)
+const getDeviceStatusColor = (d) => {
+  if (d.status === 'online') return 'bg-green-500'
+  if (d.status === 'offline') return 'bg-red-500'
+  return 'bg-gray-300' // unknown
 }
 
 const formatTime = (t) => {

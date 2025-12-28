@@ -10,7 +10,7 @@ def _internal_list_devices(device_type: str | None = None, online_only: bool = F
     try:
         base_sql = """
             SELECT id, ip, mac, name, display_name, device_type,
-                   first_seen, last_seen, vendor, icon, open_ports, attributes
+                   first_seen, last_seen, vendor, icon, open_ports, status, attributes
             FROM devices
         """
         clauses: list[str] = []
@@ -19,6 +19,9 @@ def _internal_list_devices(device_type: str | None = None, online_only: bool = F
         if device_type:
             clauses.append("device_type = ?")
             params.append(device_type)
+
+        if online_only:
+            clauses.append("status = 'online'")
         
         if clauses:
             base_sql += " WHERE " + " AND ".join(clauses)
@@ -38,7 +41,8 @@ def _internal_list_devices(device_type: str | None = None, online_only: bool = F
                 vendor=r[8],
                 icon=r[9],
                 open_ports=r[10],
-                attributes=r[11],
+                status=r[11],
+                attributes=r[12],
             )
             for r in rows
         ]
@@ -59,7 +63,7 @@ def get_device(device_id: str):
         row = conn.execute(
             """
             SELECT id, ip, mac, name, display_name, device_type,
-                   first_seen, last_seen, vendor, icon, open_ports, attributes
+                   first_seen, last_seen, vendor, icon, open_ports, status, attributes
             FROM devices
             WHERE id = ?
             """,
@@ -79,7 +83,8 @@ def get_device(device_id: str):
             vendor=row[8],
             icon=row[9],
             open_ports=row[10],
-            attributes=row[11],
+            status=row[11],
+            attributes=row[12],
         )
     finally:
         conn.close()
@@ -149,12 +154,12 @@ def import_devices(devices_data: List[DeviceRead]):
             conn.execute(
                 """
                 INSERT OR REPLACE INTO devices 
-                (id, ip, mac, name, display_name, device_type, first_seen, last_seen, vendor, icon, attributes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (id, ip, mac, name, display_name, device_type, first_seen, last_seen, vendor, icon, status, open_ports, attributes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     d.id, d.ip, d.mac, d.name, d.display_name, d.device_type,
-                    d.first_seen, d.last_seen, d.vendor, d.icon, d.attributes
+                    d.first_seen, d.last_seen, d.vendor, d.icon, d.status, d.open_ports, d.attributes
                 ]
             )
             count += 1

@@ -26,41 +26,24 @@ async def upsert_device_from_scan(
         
         if mac:
             existing_device = conn.execute(
-                "SELECT id, first_seen, last_seen, ip, attributes FROM devices WHERE mac = ?", [mac]
+                "SELECT id, first_seen, last_seen, ip, attributes, status FROM devices WHERE mac = ?", [mac]
             ).fetchone()
         
         if not existing_device:
             existing_device = conn.execute(
-                "SELECT id, first_seen, last_seen, ip, attributes FROM devices WHERE ip = ?", [ip]
+                "SELECT id, first_seen, last_seen, ip, attributes, status FROM devices WHERE ip = ?", [ip]
             ).fetchone()
 
         is_new = False
-        is_came_online = False
-        
-        # Track existing manual overrides (we don't want to overwrite user-set names/types/vendors)
-        user_overrode_name = False
-        user_overrode_type = False
-        user_overrode_vendor = False
-        user_overrode_icon = False
+        old_status = 'unknown'
         
         if existing_device:
-            device_id, first_seen, last_seen, old_ip, attributes_raw = existing_device
+            device_id, first_seen, last_seen, old_ip, attributes_raw, old_status = existing_device
             
-            # Check if user has already set values (simplistic check for now: if they differ from what we'd guess)
-            # Better: we could have a 'manual' flag in attributes, but let's just check if they are set
-            # Actually, let's just always update if it was 'unknown' or empty.
-            
-            if last_seen and last_seen.tzinfo is None:
-                last_seen = last_seen.replace(tzinfo=timezone.utc)
-                
-            time_diff = (now - last_seen).total_seconds() if last_seen else 999999
-            if time_diff > 300: 
-                is_came_online = True
-                
             # We'll use the classification engine to guess type/icon if they are currently unknown
             from app.services.classification import classify_device
             port_numbers = [p["port"] for p in ports]
-            guessed_type, guessed_icon = classify_device(hostname, None, port_numbers) # Vendor fetched later in enrichment
+            guessed_type, guessed_icon = classify_device(hostname, None, port_numbers)
             
             # Update
             conn.execute(
@@ -72,14 +55,14 @@ async def upsert_device_from_scan(
                     name = COALESCE(name, ?),
                     device_type = COALESCE(device_type, ?),
                     icon = COALESCE(icon, ?),
-                    open_ports = ?
+                    open_ports = ?,
+                    status = 'online'
                 WHERE id = ?
                 """,
                 [now, ip, mac, hostname, guessed_type, guessed_icon, json.dumps(ports), device_id]
             )
         else:
             is_new = True
-            is_came_online = True
             device_id = str(uuid4())
             
             from app.services.classification import classify_device
@@ -88,11 +71,15 @@ async def upsert_device_from_scan(
 
             conn.execute(
                 """
-                INSERT INTO devices (id, ip, mac, name, display_name, device_type, icon, open_ports, first_seen, last_seen, attributes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO devices (id, ip, mac, name, display_name, device_type, icon, open_ports, first_seen, last_seen, attributes, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'online')
                 """,
-                [device_id, ip, mac, hostname, hostname or ip, guessed_type, guessed_icon, json.dumps(ports), now, now, "{}"]
+                [device_id, ip, mac, hostname, hostname or ip, guessed_type, guessed_icon, json.dumps(ports), now, now, "{}", 'online']
             )
+
+        # Record status change if needed
+        if old_status != 'online':
+            record_status_change(conn, device_id, 'online', now)
 
         conn.execute("DELETE FROM device_ports WHERE device_id = ?", [device_id])
         if ports:
@@ -118,7 +105,7 @@ async def upsert_device_from_scan(
             if not row or not row[0]:
                 await enrich_device(device_id, mac)
 
-        if is_new or is_came_online:
+        if is_new or old_status != 'online':
             device_info = {
                 "id": device_id,
                 "ip": ip,
@@ -132,6 +119,13 @@ async def upsert_device_from_scan(
         return device_id
     finally:
         conn.close()
+
+def record_status_change(conn, device_id: str, status: str, timestamp: datetime):
+    """Records a status change in the history table."""
+    conn.execute(
+        "INSERT INTO device_status_history (id, device_id, status, changed_at) VALUES (?, ?, ?, ?)",
+        [str(uuid4()), device_id, status, timestamp]
+    )
 
 def format_mac(mac: str) -> str:
     if not mac: return ""
