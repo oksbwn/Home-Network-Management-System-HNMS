@@ -1,199 +1,251 @@
 <template>
-  <div class="space-y-8">
-    <div class="flex justify-between items-end">
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Settings</h1>
-        <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm font-medium">Global configuration and system
-          parameters</p>
+        <h1 class="text-2xl font-semibold text-slate-900 dark:text-white">Settings</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Configure network scanner and automated tasks</p>
+      </div>
+      <div v-if="saveStatus === 'saving'"
+        class="flex items-center text-blue-600 dark:text-blue-400 text-sm font-medium animate-pulse">
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+          viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+          </path>
+        </svg>
+        Saving...
+      </div>
+      <div v-else-if="saveStatus === 'saved'"
+        class="text-emerald-600 dark:text-emerald-400 text-sm font-medium flex items-center">
+        <svg class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+            clip-rule="evenodd" />
+        </svg>
+        Saved
       </div>
     </div>
 
-    <!-- Last Scan Summary (Gist) -->
-    <div v-if="gist.has_scan"
-      class="bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/20 rounded-[2rem] p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-      <div class="flex items-center space-x-6">
-        <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-lg text-blue-500">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-        </div>
-        <div>
-          <h3 class="text-xs font-black text-blue-500 uppercase tracking-[0.2em] mb-1">Telemetry Snapshot</h3>
-          <p class="text-lg font-black text-slate-900 dark:text-white leading-tight">
-            {{ gist.device_count }} devices confirmed <span class="text-slate-400 font-medium lowercase">on {{
-              gist.target }}</span>
-          </p>
-          <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-bold uppercase tracking-widest">
-            Cycle duration: {{ Math.round(gist.duration_seconds) }}s • {{ formatDateRelative(gist.finished_at) }}
-          </p>
-        </div>
-      </div>
-      <div
-        class="px-6 py-3 bg-white dark:bg-slate-800 rounded-xl border border-blue-100 dark:border-slate-700 shadow-sm text-[10px] font-black font-mono text-blue-600 dark:text-blue-400 uppercase tracking-widest">
-        {{ gist.target }}
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <!-- Main Configuration -->
-      <div class="lg:col-span-2 space-y-8">
-        <div
-          class="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 p-10">
-          <div class="flex items-center space-x-3 mb-8">
-            <div class="w-1.5 h-6 bg-blue-500 rounded-full"></div>
-            <h2 class="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Discovery Matrix</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Main Settings -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Automated Discovery -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Automated Discovery</h2>
+              <p class="text-xs text-slate-500">Configure background network scanning</p>
+            </div>
           </div>
 
-          <div class="space-y-8">
+          <div class="space-y-5">
             <div>
               <label
-                class="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-4">Target
-                Intelligence Zones (Subnets)</label>
-
-              <div
-                class="bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-inner">
-                <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-700">
-                  <thead class="bg-slate-50 dark:bg-slate-900/50">
-                    <tr>
-                      <th class="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                        Descriptor</th>
-                      <th
-                        class="px-6 py-4 text-right text-[9px] font-black text-slate-400 uppercase tracking-widest w-24">
-                        Relay</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-                    <tr v-for="(subnet, index) in subnets" :key="index" class="group">
-                      <td class="px-6 py-4">
-                        <input v-model="subnets[index]" type="text"
-                          class="block w-full text-sm font-bold bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white font-mono p-0"
-                          placeholder="0.0.0.0/0" />
-                      </td>
-                      <td class="px-6 py-4 text-right">
-                        <button @click="removeSubnet(index)"
-                          class="p-2 text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 transition-colors bg-white dark:bg-slate-800 rounded-xl shadow-sm opacity-0 group-hover:opacity-100">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                    <tr v-if="subnets.length === 0">
-                      <td colspan="2"
-                        class="px-6 py-10 text-center text-xs font-bold text-slate-400 uppercase tracking-widest italic">
-                        Signal void: No subnets active</td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50">
-                  <button @click="addSubnet"
-                    class="flex items-center text-[10px] font-black text-blue-500 uppercase tracking-widest hover:text-blue-600 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Target
+                Subnets</label>
+              <div class="flex gap-2 mb-2">
+                <input v-model="newSubnet" @keyup.enter="addSubnet" type="text" placeholder="e.g. 192.168.1.0/24"
+                  class="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
+                <button @click="addSubnet"
+                  class="px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">Add</button>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <div v-for="s in subnetList" :key="s"
+                  class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-full text-sm text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                  <span>{{ s }}</span>
+                  <button @click="removeSubnet(s)" class="text-slate-400 hover:text-red-500 transition-colors">
+                    <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    Add Target Zone
                   </button>
+                </div>
+                <div v-if="subnetList.length === 0" class="text-sm text-slate-400 italic py-2">No subnets configured for
+                  auto-discovery</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Scan
+                  Interval</label>
+                <div class="relative">
+                  <select v-model="settings.scan_interval"
+                    class="w-full pl-3 pr-10 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm appearance-none">
+                    <option value="300">Every 5 minutes</option>
+                    <option value="600">Every 10 minutes</option>
+                    <option value="1800">Every 30 minutes</option>
+                    <option value="3600">Every hour</option>
+                    <option value="86400">Once per day</option>
+                  </select>
+                  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Last
+                  Run</label>
+                <div
+                  class="px-3 py-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-400">
+                  {{ formatLastRun(settings.last_discovery_run_at) }}
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Global UI Appearance -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
+                <path
+                  d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-lg font-semibold text-slate-900 dark:text-white">UI Appearance</h2>
+              <p class="text-xs text-slate-500">Configure dashboard and visibility options</p>
+            </div>
+          </div>
+          <div class="space-y-4">
+            <label
+              class="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-600">
+              <div class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                :class="settings.hide_offline === 'true' ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'">
+                <input type="checkbox" v-model="settings.hide_offline" true-value="true" false-value="false"
+                  class="hidden" />
+                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                  :class="settings.hide_offline === 'true' ? 'translate-x-6' : 'translate-x-1'"></span>
+              </div>
               <div>
-                <label
-                  class="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-3">Sync
-                  frequency (Seconds)</label>
-                <input v-model="form.scan_interval" type="number"
-                  class="w-full px-6 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none text-slate-900 dark:text-white font-mono font-bold shadow-inner" />
+                <div class="text-sm font-medium text-slate-900 dark:text-white">Hide Offline Devices</div>
+                <div class="text-xs text-slate-500">Only show active network nodes on dashboard</div>
               </div>
-            </div>
-
-            <div class="pt-4 flex justify-end">
-              <button @click="saveSettings"
-                class="px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-[10px] font-black shadow-xl shadow-slate-200 dark:shadow-none hover:scale-105 active:scale-95 transition-all uppercase tracking-widest">
-                Sync Core Config
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="bg-rose-50/50 dark:bg-rose-500/5 rounded-[2.5rem] border border-rose-100 dark:border-rose-500/20 p-10 overflow-hidden relative group">
-          <div class="absolute top-0 right-0 p-8 text-rose-500 opacity-5 group-hover:opacity-10 transition-opacity">
-            <svg viewBox="0 0 24 24" class="w-32 h-32" fill="currentColor">
-              <path
-                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-            </svg>
-          </div>
-          <div class="relative">
-            <h2 class="text-lg font-black text-rose-600 uppercase tracking-tight mb-2">Danger Protocol</h2>
-            <p class="text-xs font-bold text-rose-400 dark:text-rose-300/60 uppercase tracking-widest max-w-sm">Wiping
-              application state will terminate all discovery history and user definitions permanently.</p>
-
-            <div class="mt-8">
-              <button @click="resetDatabase"
-                class="px-8 py-4 bg-rose-500 text-white rounded-2xl text-[10px] font-black shadow-lg shadow-rose-200 dark:shadow-none hover:bg-rose-600 transition-all uppercase tracking-widest">
-                Terminate Global State
-              </button>
-            </div>
+            </label>
           </div>
         </div>
       </div>
 
-      <!-- MQTT & Other -->
-      <div class="space-y-8">
-        <div
-          class="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 p-8">
-          <div class="flex items-center space-x-3 mb-8">
-            <div class="w-1.5 h-6 bg-emerald-500 rounded-full"></div>
-            <h2 class="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Messaging Bus</h2>
-          </div>
-          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-6">Real-time status broadcast
-            configuration</p>
-
-          <div class="space-y-6">
-            <div>
-              <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Relay
-                Host</label>
-              <input v-model="form.mqtt_broker" type="text"
-                class="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none text-slate-900 dark:text-white font-mono font-bold transition-all" />
+      <!-- Sidebar: Summary & Danger -->
+      <div class="space-y-6">
+        <!-- Scan Summary -->
+        <div v-if="gist"
+          class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-4">Discovery Metrics</h3>
+          <div class="space-y-4">
+            <div class="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-700">
+              <span class="text-xs text-slate-500">Total Scans Run</span>
+              <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ gist.total_scans }}</span>
             </div>
-            <div>
-              <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Port
-                Access</label>
-              <input v-model="form.mqtt_port" type="number"
-                class="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none text-slate-900 dark:text-white font-mono font-bold transition-all" />
+            <div class="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-700">
+              <span class="text-xs text-slate-500">Discovery Jobs</span>
+              <span class="text-sm font-semibold text-emerald-600">{{ gist.scans_done }}</span>
             </div>
-          </div>
-
-          <div class="mt-8 pt-8 border-t border-slate-50 dark:border-slate-700">
-            <div class="flex items-center space-x-3 text-emerald-500">
-              <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]">
-              </div>
-              <span class="text-[9px] font-black uppercase tracking-widest">Protocol Active</span>
+            <div class="flex justify-between items-center py-2">
+              <span class="text-xs text-slate-500">Currently Active</span>
+              <span class="flex items-center gap-2">
+                <span v-if="gist.scans_running > 0" class="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+                <span class="text-sm font-semibold text-blue-600">{{ gist.scans_running }}</span>
+              </span>
             </div>
           </div>
         </div>
+
+        <!-- Danger Zone -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg border border-red-200 dark:border-red-900/20 p-6">
+          <h3 class="text-sm font-semibold text-red-600 dark:text-red-400 mb-2">System Maintenance</h3>
+          <p class="text-xs text-slate-500 mb-4">Cleanup tools and data management</p>
+          <div class="space-y-3">
+            <button @click="clearAllData"
+              class="w-full px-4 py-2 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2">
+              <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+                <path
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Factory Reset Data
+            </button>
+            <p class="text-[10px] text-slate-400 text-center px-2">This will permanently delete all discovered devices
+              and history.</p>
+          </div>
+        </div>
       </div>
+    </div>
+
+    <!-- Final Save -->
+    <div class="fixed bottom-6 right-6 lg:static flex justify-end">
+      <button @click="saveSettings" :disabled="saveStatus === 'saving'"
+        class="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2">
+        Save Configuration
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import axios from 'axios'
 
-const form = reactive({
+const settings = reactive({
+  scan_subnets: '[]',
   scan_interval: '300',
-  mqtt_broker: 'localhost',
-  mqtt_port: '1883'
+  last_discovery_run_at: '',
+  hide_offline: 'false'
 })
 
-const subnets = ref([])
-const gist = ref({ has_scan: false })
+const subnetList = ref([])
+const newSubnet = ref('')
+const gist = ref(null)
+const saveStatus = ref('idle')
+
+const addSubnet = () => {
+  const s = newSubnet.value.trim()
+  if (!s) return
+  if (!subnetList.value.includes(s)) {
+    subnetList.value.push(s)
+    settings.scan_subnets = JSON.stringify(subnetList.value)
+  }
+  newSubnet.value = ''
+}
+
+const removeSubnet = (s) => {
+  subnetList.value = subnetList.value.filter(item => item !== s)
+  settings.scan_subnets = JSON.stringify(subnetList.value)
+}
+
+const fetchSettings = async () => {
+  try {
+    const res = await axios.get('/api/v1/config/')
+    const mapping = {}
+    res.data.forEach(item => {
+      mapping[item.key] = item.value
+    })
+
+    // Apply mapping
+    if (mapping.scan_subnets) {
+      settings.scan_subnets = mapping.scan_subnets
+      try {
+        subnetList.value = JSON.parse(mapping.scan_subnets)
+      } catch { subnetList.value = [] }
+    }
+    if (mapping.scan_interval) settings.scan_interval = mapping.scan_interval
+    if (mapping.last_discovery_run_at) settings.last_discovery_run_at = mapping.last_discovery_run_at
+    if (mapping.hide_offline) settings.hide_offline = mapping.hide_offline
+  } catch (e) {
+    console.error("Failed to fetch config:", e)
+  }
+}
 
 const fetchGist = async () => {
   try {
@@ -204,73 +256,36 @@ const fetchGist = async () => {
   }
 }
 
-const fetchSettings = async () => {
-  try {
-    const res = await axios.get('/api/v1/config/')
-    const data = res.data
-    data.forEach(item => {
-      if (item.key === 'scan_subnets') {
-        try {
-          subnets.value = JSON.parse(item.value)
-        } catch (e) {
-          subnets.value = item.value ? [item.value] : []
-        }
-      } else if (item.key === 'scan_target' && subnets.value.length === 0) {
-        // Legacy support
-        if (item.value) subnets.value = [item.value]
-      } else if (item.key in form) {
-        form[item.key] = item.value
-      }
-    })
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-const addSubnet = () => {
-  subnets.value.push('')
-}
-
-const removeSubnet = (index) => {
-  subnets.value.splice(index, 1)
-}
-
 const saveSettings = async () => {
+  saveStatus.value = 'saving'
   try {
-    const payload = {
-      ...form,
-      scan_subnets: JSON.stringify(subnets.value.filter(s => s.trim() !== '')),
-      scan_target: subnets.value.join(' ') // fallback for existing logic
-    }
-    await axios.post('/api/v1/config/', payload)
-    alert('Settings saved. Some changes may require a restart.')
+    await axios.post('/api/v1/config/', settings)
+    saveStatus.value = 'saved'
+    setTimeout(() => { saveStatus.value = 'idle' }, 2000)
   } catch (e) {
-    alert('Error saving settings')
+    alert('Failed to save settings')
+    saveStatus.value = 'idle'
   }
 }
 
-const resetDatabase = async () => {
-  if (confirm('Are you sure? This will wipe ALL data.')) {
-    // This is a placeholder for actual reset logic if implemented
-    alert('Reset logic not fully implemented in this demo.')
+const clearAllData = async () => {
+  if (!confirm('This will delete all devices and scan history. Continue?')) return
+  try {
+    await axios.delete('/api/v1/devices/')
+    await axios.delete('/api/v1/scans/')
+    alert('All data cleared')
+    window.location.reload()
+  } catch (e) {
+    alert('Failed to clear data')
   }
 }
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return d.toLocaleString()
-}
-
-const formatDateRelative = (t) => {
-  if (!t) return ''
-  const diff = new Date() - new Date(t)
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.floor(hours / 24)}d ago`
+const formatLastRun = (dateStr) => {
+  if (!dateStr) return 'Never'
+  try {
+    const date = new Date(dateStr)
+    return date.toLocaleString()
+  } catch { return 'Never' }
 }
 
 onMounted(() => {
