@@ -1,83 +1,109 @@
 <template>
-    <div class="space-y-6">
-        <div class="flex justify-between items-center">
+    <div class="space-y-8">
+        <div class="flex justify-between items-end">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">IP Occupancy</h1>
-                <p class="text-sm text-gray-500 mt-1">Network map for subnet {{ selectedSubnet }}.0/24</p>
+                <h1 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Zone Map</h1>
+                <p class="text-sm text-slate-500 font-medium mt-1">Matrix occupancy for segment {{ selectedSubnet
+                }}.0/24</p>
             </div>
 
             <div
-                class="flex items-center space-x-3 bg-white dark:bg-slate-800 p-2 rounded-lg border border-gray-100 dark:border-slate-700 shadow-sm">
-                <label class="text-xs font-bold text-gray-400 uppercase">Subnet:</label>
+                class="px-5 py-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex items-center space-x-4 transition-all hover:shadow-md">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Segment</label>
                 <select v-model="selectedSubnet"
-                    class="bg-transparent text-sm font-medium text-gray-900 dark:text-white outline-none cursor-pointer">
+                    class="bg-transparent text-xs font-black text-slate-900 dark:text-white outline-none cursor-pointer appearance-none">
                     <option v-for="s in availableSubnets" :key="s" :value="s">{{ s }}.0/24</option>
                 </select>
+                <svg viewBox="0 0 24 24" class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor"
+                    stroke-width="3">
+                    <path d="M6 9l6 6 6-6" />
+                </svg>
             </div>
         </div>
 
         <!-- Summary Bar -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div v-for="stat in summaryStats" :key="stat.label" 
-                class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
-                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{{ stat.label }}</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div v-for="stat in summaryStats" :key="stat.label"
+                class="group relative bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-100 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-none transition-all hover:scale-[1.02]">
+                <div class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-3">
+                    {{ stat.label }}</div>
                 <div class="flex items-end justify-between">
-                    <div class="text-2xl font-mono font-bold text-gray-900 dark:text-white">{{ stat.value }}</div>
-                    <div :class="stat.colorClass" class="w-2 h-2 rounded-full mb-2 shadow-[0_0_8px_rgba(0,0,0,0.1)]"></div>
+                    <div class="text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tighter">{{
+                        stat.value }}</div>
+                    <div :class="stat.colorClass" class="w-2.5 h-2.5 rounded-full mb-2 shadow-lg animate-pulse"></div>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-4 md:p-8 border border-gray-100 dark:border-slate-700">
-            <div class="flex flex-col gap-6 md:gap-10">
+        <div
+            class="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none p-6 md:p-12 border border-slate-100 dark:border-slate-700">
+            <div class="flex flex-col gap-10 md:gap-14">
                 <!-- Grouped Grid -->
-                <div v-for="rowIndex in 8" :key="rowIndex" class="space-y-3">
-                    <div class="flex items-center space-x-3 text-[9px] md:text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
-                        <span class="whitespace-nowrap">Row {{ rowIndex }} (IP .{{ (rowIndex - 1) * 32 + 1 }} - .{{ Math.min(rowIndex * 32, 255) }})</span>
-                        <div class="flex-1 h-px bg-gray-100 dark:bg-slate-700/50"></div>
+                <div v-for="rowIndex in 8" :key="rowIndex" class="space-y-6">
+                    <div class="flex items-center space-x-6">
+                        <span
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] whitespace-nowrap">Bank
+                            {{ rowIndex }} <span class="text-slate-200 dark:text-slate-700 ml-2">// .{{ (rowIndex - 1) *
+                                32 + 1 }} - .{{ Math.min(rowIndex * 32, 255) }}</span></span>
+                        <div class="flex-1 h-px bg-slate-50 dark:bg-slate-700/50"></div>
                     </div>
-                    
-                    <div class="flex flex-wrap gap-4 md:gap-6 px-1">
+
+                    <div class="flex flex-wrap gap-4 md:gap-10">
                         <!-- Blocks of 8 -->
-                        <div v-for="blockIndex in 4" :key="blockIndex" class="flex flex-wrap gap-1.5 md:gap-2">
+                        <div v-for="blockIndex in 4" :key="blockIndex" class="inline-grid grid-cols-4 gap-2 md:gap-3">
                             <template v-for="i in 8" :key="i">
                                 <template v-if="((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i) <= 254">
-                                    <div 
-                                        class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center text-[8px] md:text-[10px] font-mono font-bold rounded-lg md:rounded-xl transition-all duration-300 cursor-pointer relative group shadow-sm border"
-                                        :class="getStatusClass((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i)" 
+                                    <div class="w-8 h-8 md:w-11 md:h-11 flex items-center justify-center text-[9px] md:text-[11px] font-black rounded-lg md:rounded-2xl transition-all duration-500 cursor-pointer relative group border-2 shadow-sm uppercase tracking-tighter"
+                                        :class="getStatusClass((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i)"
                                         @click="goToDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i)">
-                                        <span class="font-bold">{{ (rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i }}</span>
+                                        <span>{{ (rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i }}</span>
 
                                         <!-- Tooltip -->
                                         <div v-if="getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i)"
-                                            class="invisible group-hover:visible absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-[10px] p-4 rounded-2xl shadow-2xl z-50 w-56 border border-slate-100 dark:border-slate-700 origin-bottom ring-8 ring-slate-900/5 transition-all scale-95 group-hover:scale-100 opacity-0 group-hover:opacity-100 hidden sm:block">
-                                            <div class="flex items-center space-x-3 mb-3">
-                                                <div class="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl shadow-inner border border-slate-100 dark:border-slate-700">
-                                                    <component :is="getIcon(getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).icon)"
-                                                        class="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                                            class="invisible group-hover:visible absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-[10px] p-6 rounded-[2rem] shadow-2xl z-[100] w-64 border border-slate-100 dark:border-slate-700 origin-bottom ring-[20px] ring-black/5 transition-all scale-90 group-hover:scale-100 opacity-0 group-hover:opacity-100 hidden sm:block">
+                                            <div class="flex items-center space-x-4 mb-5">
+                                                <div
+                                                    class="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl shadow-inner border border-slate-100 dark:border-slate-700">
+                                                    <component
+                                                        :is="getIcon(getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).icon)"
+                                                        class="h-6 w-6 text-slate-600 dark:text-slate-400" />
                                                 </div>
                                                 <div class="flex-1 min-w-0 text-left">
-                                                    <div class="font-bold truncate text-xs leading-tight">{{ getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).display_name ||
-                                                        getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).ip }}</div>
-                                                    <div class="text-[9px] text-slate-500 font-mono truncate leading-none mt-1">{{
-                                                        getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).ip }}</div>
+                                                    <div
+                                                        class="font-black truncate text-xs uppercase tracking-tight leading-tight">
+                                                        {{ getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 +
+                                                            i).display_name || 'Asset ' + (rowIndex - 1) * 32 + (blockIndex
+                                                                - 1) * 8 + i }}</div>
+                                                    <div
+                                                        class="text-[9px] text-slate-400 font-mono font-bold mt-1 tracking-widest uppercase truncate leading-none">
+                                                        {{ getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).ip
+                                                        }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="space-y-2 border-t border-slate-50 dark:border-slate-800 pt-4">
+                                                <div class="flex justify-between items-center">
+                                                    <span
+                                                        class="text-slate-400 font-black uppercase text-[8px] tracking-[0.2em]">Matrix
+                                                        Status</span>
+                                                    <span
+                                                        :class="getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).status === 'online' ? 'text-emerald-500' : 'text-rose-500'"
+                                                        class="font-black uppercase text-[8px] tracking-widest px-2 py-1 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">{{
+                                                            getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).status
+                                                        }}</span>
+                                                </div>
+                                                <div v-if="getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).last_seen"
+                                                    class="flex justify-between items-center">
+                                                    <span
+                                                        class="text-slate-400 font-black uppercase text-[8px] tracking-[0.2em]">Signal
+                                                        Ack</span>
+                                                    <span
+                                                        class="text-slate-900 dark:text-white font-black uppercase text-[9px]">{{
+                                                            formatTime(getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8
+                                                                + i).last_seen) }}</span>
                                                 </div>
                                             </div>
                                             <div
-                                                class="text-[9px] space-y-1.5 border-t border-slate-50 dark:border-slate-800 pt-3">
-                                                <div v-if="getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).status" class="flex justify-between items-center">
-                                                    <span class="text-slate-400 font-medium">STATUS</span>
-                                                    <span :class="getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).status === 'online' ? 'text-emerald-500' : 'text-rose-500'" class="font-black uppercase text-[8px] tracking-widest px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 rounded-md border border-slate-100 dark:border-slate-700">{{ getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).status }}</span>
-                                                </div>
-                                                <div v-if="getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).last_seen" class="flex justify-between items-center">
-                                                    <span class="text-slate-400 font-medium uppercase text-[8px]">Last Seen</span>
-                                                    <span class="text-slate-700 dark:text-slate-200 font-bold">{{ formatTime(getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).last_seen) }}</span>
-                                                </div>
-                                                <div v-if="getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).vendor"
-                                                    class="flex justify-between items-center">
-                                                    <span class="text-slate-400 font-medium uppercase text-[8px]">Vendor</span> 
-                                                    <span class="max-w-[100px] truncate text-slate-700 dark:text-slate-200 font-bold">{{ getDevice((rowIndex - 1) * 32 + (blockIndex - 1) * 8 + i).vendor }}</span>
-                                                </div>
+                                                class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-slate-900 rotate-45 border-r border-b border-slate-100 dark:border-slate-700">
                                             </div>
                                         </div>
                                     </div>
@@ -141,7 +167,7 @@ const summaryStats = computed(() => {
         const parts = d.ip.split('.')
         return parts.length === 4 && `${parts[0]}.${parts[1]}.${parts[2]}` === selectedSubnet.value
     })
-    
+
     const online = subnetDevices.filter(d => d.status === 'online').length
     const offline = subnetDevices.filter(d => d.status === 'offline').length
     const used = subnetDevices.length
@@ -157,7 +183,7 @@ const summaryStats = computed(() => {
 
 const getStatusClass = (suffix) => {
     const d = getDevice(suffix)
-    
+
     if (!d) {
         return 'bg-blue-400 dark:bg-blue-600/80 text-white border-blue-300/20 hover:bg-blue-500 transition-colors'
     }
@@ -165,7 +191,7 @@ const getStatusClass = (suffix) => {
     if (d.status === 'online') {
         return 'bg-emerald-400 dark:bg-emerald-500/80 text-white border-emerald-300/20 hover:bg-emerald-500'
     }
-    
+
     return 'bg-rose-400 dark:bg-rose-500/80 text-white border-rose-300/20 hover:bg-rose-500'
 }
 
@@ -196,7 +222,7 @@ onMounted(async () => {
                     counts[sub] = (counts[sub] || 0) + 1
                 }
             })
-            
+
             const subnetKeys = Object.keys(counts)
             if (subnetKeys.length > 0) {
                 selectedSubnet.value = subnetKeys.reduce((a, b) => counts[a] > counts[b] ? a : b)

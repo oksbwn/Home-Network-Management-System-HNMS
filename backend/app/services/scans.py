@@ -163,41 +163,60 @@ async def run_scan_job(scan_id: str, target: str, scan_type: str) -> None:
                 })
 
         # 3. Process Results
-        unique_devices = {d["ip"]: d for d in discovered_devices}.values()
+        unique_devices = list({d["ip"]: d for d in discovered_devices}.values())
         mac_count = sum(1 for d in unique_devices if d["mac"])
         print(f"DEBUG: Found {len(unique_devices)} unique devices. MACs found: {mac_count}")
 
-        for device in unique_devices:
-            ip = device["ip"]
-            mac = device["mac"]
-            
-            # 4. Resolve Hostname & Trace Ports
-            hostname = await resolve_hostname(ip)
-            ports_list = await scan_ports(ip)
+        # Parallelize device enrichment (hostname and ports)
+        # Use a semaphore to avoid overwhelming the system/network
+        semaphore = asyncio.Semaphore(10) # Process up to 10 devices in parallel
 
-            result_id = str(uuid4())
-            conn.execute(
-                """
-                INSERT INTO scan_results
-                (id, scan_id, ip, mac, hostname, open_ports, os, first_seen, last_seen)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                [result_id, scan_id, ip, mac, hostname, json.dumps(ports_list), None, now, now]
-            )
+        async def process_single_device(device):
+            async with semaphore:
+                ip = device["ip"]
+                mac = device["mac"]
+                
+                # 4. Resolve Hostname & Trace Ports
+                # Adding individual timeouts to prevent a single hang from blocking everything
+                hostname = await resolve_hostname(ip)
+                ports_list = await scan_ports(ip)
 
-            # 5. Persist Open Ports to separate table for long-term tracking
-            for p in ports_list:
-                conn.execute(
-                    """
-                    INSERT INTO device_ports (device_id, port, protocol, service, last_seen)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
-                    [mac or ip, p["port"], p["protocol"], p["service"], now]
-                )
+                result_id = str(uuid4())
+                
+                # We need a new connection per task or a thread-safe way, 
+                # but to avoid lock contention, we'll do the inserts here.
+                # DuckDB handles multiple connections as long as they are from the same process.
+                job_conn = get_connection()
+                try:
+                    job_now = datetime.now(timezone.utc)
+                    job_conn.execute(
+                        """
+                        INSERT INTO scan_results
+                        (id, scan_id, ip, mac, hostname, open_ports, os, first_seen, last_seen)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        [result_id, scan_id, ip, mac, hostname, json.dumps(ports_list), None, job_now, job_now]
+                    )
 
-            # upsert device
-            from app.services.devices import upsert_device_from_scan
-            await upsert_device_from_scan(ip, mac, hostname, ports_list)
+                    # 5. Persist Open Ports
+                    for p in ports_list:
+                        job_conn.execute(
+                            """
+                            INSERT INTO device_ports (device_id, port, protocol, service, last_seen)
+                            VALUES (?, ?, ?, ?, ?)
+                            """,
+                            [mac or ip, p["port"], p["protocol"], p["service"], job_now]
+                        )
+
+                    # upsert device
+                    from app.services.devices import upsert_device_from_scan
+                    await upsert_device_from_scan(ip, mac, hostname, ports_list)
+                finally:
+                    job_conn.close()
+
+        # Execute processing jobs in parallel
+        if unique_devices:
+            await asyncio.gather(*(process_single_device(d) for d in unique_devices))
 
         # 6. Post-scan: Mark devices as offline if they were not seen in this scan
         # We only do this for devices that were previously 'online'

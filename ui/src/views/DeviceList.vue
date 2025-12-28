@@ -1,178 +1,212 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Devices</h1>
-      <div class="flex space-x-2">
-        <button @click="exportDevices"
-          class="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center">
-          <Download class="h-4 w-4 mr-2" />
-          Export
-        </button>
-        <button @click="$refs.importInput.click()"
-          class="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center">
-          <Upload class="h-4 w-4 mr-2" />
-          Import
-        </button>
+  <div class="space-y-8">
+    <div class="flex justify-between items-end">
+      <div>
+        <h1 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Devices</h1>
+        <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm font-medium">Inventory of all discovered network
+          assets</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div
+          class="flex bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-1">
+          <button @click="exportDevices"
+            class="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition text-slate-500 dark:text-slate-400"
+            title="Export JSON">
+            <Download class="h-4 w-4" />
+          </button>
+          <button @click="$refs.importInput.click()"
+            class="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition text-slate-500 dark:text-slate-400"
+            title="Import JSON">
+            <Upload class="h-4 w-4" />
+          </button>
+        </div>
         <input type="file" ref="importInput" class="hidden" @change="handleImport" accept=".json" />
         <button @click="triggerScan" :disabled="isScanning"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+          class="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-xs font-black shadow-lg shadow-slate-200 dark:shadow-none hover:scale-105 active:scale-95 transition-all uppercase tracking-widest disabled:opacity-50 flex items-center">
           <component :is="isScanning ? Loader2 : RefreshCw" class="h-4 w-4 mr-2"
             :class="{ 'animate-spin': isScanning }" />
-          {{ isScanning ? 'Scanning...' : 'Scan Now' }}
+          {{ isScanning ? 'Discovery Active' : 'Scan Now' }}
         </button>
       </div>
     </div>
 
     <!-- Error state -->
     <div v-if="error"
-      class="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg border border-red-100 dark:border-red-900/30">
-      {{ error }}
+      class="p-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 rounded-2xl border border-rose-100 dark:border-rose-900/30 text-sm font-medium flex items-center space-x-3">
+      <svg viewBox="0 0 24 24" class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+      <span>{{ error }}</span>
     </div>
 
     <!-- Device Table -->
     <div
-      class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
-      <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
-        <thead class="bg-gray-50 dark:bg-slate-900">
-          <tr>
-            <th
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Device</th>
-            <th
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Vendor & Services</th>
-            <th
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Type</th>
-            <th
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Last Seen</th>
-            <th
-              class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
-          <tr v-for="device in devices" :key="device.id" class="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition">
-            <td class="px-6 py-4 whitespace-nowrap">
-              <div class="flex items-center space-x-3">
-                <div class="relative">
-                  <div class="p-2 bg-gray-100 dark:bg-slate-700 rounded-lg">
-                    <component :is="getIcon(device.icon || 'help-circle')"
-                      class="h-5 w-5 text-gray-600 dark:text-gray-400" />
+      class="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-50 dark:divide-slate-700">
+          <thead>
+            <tr class="bg-slate-50/50 dark:bg-slate-900/50">
+              <th
+                class="px-8 py-5 text-left text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                Device Ident</th>
+              <th
+                class="px-6 py-5 text-left text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                Metadata & Services</th>
+              <th
+                class="px-6 py-5 text-left text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                Classification</th>
+              <th
+                class="px-6 py-5 text-left text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                Last Ack</th>
+              <th
+                class="px-8 py-5 text-right text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                Control</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50 dark:divide-slate-700">
+            <tr v-for="device in devices" :key="device.id"
+              class="group hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors">
+              <td class="px-8 py-6 whitespace-nowrap">
+                <div class="flex items-center space-x-4">
+                  <div class="relative">
+                    <div
+                      class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl group-hover:scale-110 transition-transform shadow-sm">
+                      <component :is="getIcon(device.icon || 'help-circle')"
+                        class="h-6 w-6 text-slate-600 dark:text-slate-400" />
+                    </div>
+                    <span
+                      class="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-[3px] border-white dark:border-slate-800 shadow-md transition-colors duration-500"
+                      :class="getDeviceStatusColor(device)"></span>
                   </div>
-                  <span
-                    class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-slate-800"
-                    :class="getDeviceStatusColor(device)"></span>
-                </div>
-                <div>
-                  <div class="text-sm font-bold text-gray-900 dark:text-white">
-                    {{ device.display_name || 'Unknown Device' }}
+                  <div>
+                    <div class="text-sm font-black text-slate-900 dark:text-white leading-tight">
+                      {{ device.display_name || 'Anonymous Asset' }}
+                    </div>
+                    <div class="text-[10px] text-slate-400 font-mono mt-1 uppercase tracking-wider">{{ device.ip }}
+                    </div>
                   </div>
-                  <div class="text-xs text-gray-500 font-mono">{{ device.ip }}</div>
                 </div>
-              </div>
-            </td>
-            <td class="px-6 py-4">
-              <div class="text-sm text-gray-900 dark:text-gray-200">{{ device.vendor || 'Unknown Vendor' }}</div>
-              <div class="text-xs text-gray-500 font-mono mb-1">{{ device.mac || 'No MAC' }}</div>
-              <div class="flex flex-wrap gap-1 mt-1">
-                <span v-for="port in parsePorts(device.open_ports)" :key="port.port"
-                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                  :class="getPortColor(port.port)">
-                  {{ port.service || port.port }}
+              </td>
+              <td class="px-6 py-6 border-l border-slate-50 dark:border-slate-700/30">
+                <div class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight">{{
+                  device.vendor || 'Unknown Source' }}</div>
+                <div class="text-[9px] text-slate-400 font-mono mt-1 truncate max-w-[140px]">{{ device.mac ||
+                  'Unidentified' }}</div>
+                <div class="flex flex-wrap gap-1 mt-2">
+                  <span v-for="port in parsePorts(device.open_ports)" :key="port.port"
+                    class="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter"
+                    :class="getPortColor(port.port)">
+                    {{ port.service || port.port }}
+                  </span>
+                </div>
+              </td>
+              <td class="px-6 py-6 whitespace-nowrap">
+                <span
+                  class="px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg bg-blue-50 text-blue-500 border border-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20">
+                  {{ device.device_type || 'unclassified' }}
                 </span>
-              </div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-              <span
-                class="px-2.5 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                {{ device.device_type || 'unclassified' }}
-              </span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
-              {{ formatTime(device.last_seen) }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right space-x-2">
-              <button @click="editDevice(device)"
-                class="p-1.5 text-gray-400 hover:text-blue-600 transition dark:hover:text-blue-400" title="Edit Device">
-                <Edit2 class="h-4 w-4" />
-              </button>
-              <router-link :to="'/devices/' + device.id"
-                class="p-1.5 text-gray-400 hover:text-gray-900 transition dark:hover:text-white inline-block"
-                title="View Details">
-                <ExternalLink class="h-4 w-4" />
-              </router-link>
-            </td>
-          </tr>
-          <tr v-if="devices.length === 0 && !loading">
-            <td colspan="5" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400 italic">
-              No devices found. Run a scan to discover your network.
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              </td>
+              <td class="px-6 py-6 whitespace-nowrap">
+                <div class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                  {{ formatTimeRelative(device.last_seen) }}
+                </div>
+                <div class="text-[8px] text-slate-300 dark:text-slate-600 mt-1 font-mono uppercase">{{
+                  formatTimeFull(device.last_seen) }}</div>
+              </td>
+              <td class="px-8 py-6 whitespace-nowrap text-right">
+                <div class="flex items-center justify-end space-x-2">
+                  <button @click="editDevice(device)"
+                    class="p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-900 transition-all shadow-sm"
+                    title="Modify Config">
+                    <Edit2 class="h-4 w-4" />
+                  </button>
+                  <router-link :to="'/devices/' + device.id"
+                    class="p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-900 transition-all shadow-sm"
+                    title="Telemetry Analysis">
+                    <ExternalLink class="h-4 w-4" />
+                  </router-link>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="devices.length === 0 && !loading">
+              <td colspan="5" class="px-6 py-24 text-center">
+                <div class="inline-flex p-6 bg-slate-100 dark:bg-slate-900 rounded-full mb-6">
+                  <Search class="h-8 w-8 text-slate-400" />
+                </div>
+                <p class="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] italic">Void
+                  Detected: Signal Discovery Required</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Edit Modal -->
     <div v-if="editingDevice"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md transition-all duration-300">
       <div
-        class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 overflow-hidden transform transition-all scale-100">
-        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-          <h3 class="text-lg font-bold text-slate-800 dark:text-white">Edit Device</h3>
-          <button @click="editingDevice = null" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
-            <X class="h-5 w-5" />
+        class="bg-white dark:bg-slate-800 rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] w-full max-w-lg border border-white/20 dark:border-slate-700 overflow-hidden transform transition-all scale-100">
+        <div
+          class="px-10 py-8 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/30">
+          <div>
+            <h3 class="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Modify Asset</h3>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Configuring {{ editForm.ip }}
+            </p>
+          </div>
+          <button @click="editingDevice = null"
+            class="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-full text-slate-400 transition-colors shadow-sm">
+            <X class="h-6 w-6" />
           </button>
         </div>
 
-        <div class="p-6 space-y-4">
+        <div class="p-10 space-y-8">
           <div>
-            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Friendly
-              Name</label>
+            <label
+              class="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-3">Friendly
+              Identification</label>
             <input v-model="editForm.display_name"
-              class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
-              placeholder="e.g. My Phone" />
+              class="w-full px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none text-slate-900 dark:text-white font-bold transition-all shadow-inner"
+              placeholder="e.g. Master Workstation" />
           </div>
 
-          <div class="grid grid-cols-1 gap-4">
+          <div class="grid grid-cols-1 gap-8">
             <div>
-              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Device
-                Type</label>
+              <label
+                class="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-3">Asset
+                Classification</label>
               <select v-model="editForm.device_type"
-                class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white">
+                class="w-full px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none text-slate-900 dark:text-white font-bold transition-all shadow-inner appearance-none cursor-pointer">
                 <option v-for="type in deviceTypes" :key="type" :value="type">{{ type }}</option>
               </select>
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Select
-                Icon</label>
+              <label
+                class="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-3">Visual
+                Matrix Link</label>
               <div
-                class="grid grid-cols-7 gap-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">
+                class="grid grid-cols-6 gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded-[2rem] shadow-inner">
                 <button v-for="(iconComp, key) in availableIcons" :key="key" @click="editForm.icon = key" type="button"
-                  class="p-2.5 flex items-center justify-center rounded-lg border-2 transition-all"
-                  :class="editForm.icon === key ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600' : 'border-transparent hover:bg-white dark:hover:bg-slate-800 text-slate-400'"
+                  class="aspect-square flex items-center justify-center rounded-xl border-2 transition-all p-2"
+                  :class="editForm.icon === key ? 'border-blue-500 bg-white dark:bg-slate-800 text-blue-500 shadow-lg scale-110 rotate-3 z-10' : 'border-transparent hover:bg-white dark:hover:bg-slate-800 text-slate-400'"
                   :title="key">
                   <component :is="iconComp" class="h-5 w-5" />
                 </button>
               </div>
             </div>
           </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Vendor</label>
-            <input v-model="editForm.vendor"
-              class="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white" />
-          </div>
         </div>
 
-        <div class="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 flex justify-end space-x-3">
+        <div
+          class="px-10 py-8 bg-slate-50 dark:bg-slate-900/50 flex justify-end items-center gap-6 border-t border-slate-100 dark:border-slate-700">
           <button @click="editingDevice = null"
-            class="px-4 py-2 text-slate-500 hover:text-slate-700 font-medium">Cancel</button>
+            class="text-xs font-black text-slate-400 hover:text-slate-900 dark:hover:text-white uppercase tracking-widest transition-colors">Abort</button>
           <button @click="saveDevice" :disabled="saving"
-            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold disabled:opacity-50">
-            {{ saving ? 'Saving...' : 'Save Changes' }}
+            class="px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-xs font-black shadow-xl shadow-slate-200 dark:shadow-none hover:scale-105 active:scale-95 transition-all uppercase tracking-widest disabled:opacity-50">
+            {{ saving ? 'Syncing...' : 'Commit Changes' }}
           </button>
         </div>
       </div>
@@ -351,8 +385,19 @@ const getDeviceStatusColor = (d) => {
   return 'bg-gray-300' // unknown
 }
 
-const formatTime = (t) => {
-  if (!t) return 'Never'
+const formatTimeRelative = (t) => {
+  if (!t) return 'Offline'
+  const diff = new Date() - new Date(t)
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
+const formatTimeFull = (t) => {
+  if (!t) return 'No detection history'
   return new Date(t).toLocaleString()
 }
 
