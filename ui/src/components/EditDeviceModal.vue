@@ -46,20 +46,43 @@
                                     </select>
                                 </div>
 
-                                <!-- Icon Picker -->
+                                <!-- Icon Picker Popover -->
                                 <div>
                                     <label
                                         class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Select
                                         Icon</label>
-                                    <div
-                                        class="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto p-2 border border-slate-200 dark:border-slate-700 rounded-md">
-                                        <button v-for="icon in availableIcons" :key="icon" type="button"
-                                            @click="form.icon = icon"
-                                            class="p-2 rounded-lg flex items-center justify-center transition-colors"
-                                            :class="form.icon === icon ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 ring-2 ring-blue-500' : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500'">
-                                            <component :is="getIconComponent(icon)" class="h-6 w-6" />
-                                        </button>
-                                    </div>
+                                    <Popover class="relative">
+                                        <PopoverButton
+                                            class="w-full flex items-center justify-between px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all group">
+                                            <div class="flex items-center gap-3">
+                                                <component :is="getIconComponent(form.icon)"
+                                                    class="h-5 w-5 text-blue-500" />
+                                                <span class="text-sm">{{ form.icon || 'Select Icon' }}</span>
+                                            </div>
+                                            <LucideIcons.ChevronDown
+                                                class="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                                        </PopoverButton>
+
+                                        <transition enter-active-class="transition duration-200 ease-out"
+                                            enter-from-class="translate-y-1 opacity-0"
+                                            enter-to-class="translate-y-0 opacity-100"
+                                            leave-active-class="transition duration-150 ease-in"
+                                            leave-from-class="translate-y-0 opacity-100"
+                                            leave-to-class="translate-y-1 opacity-0">
+                                            <PopoverPanel
+                                                class="absolute z-50 bottom-full mb-2 right-0 w-[280px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-4 focus:outline-none overflow-hidden">
+                                                <div
+                                                    class="grid grid-cols-4 gap-2 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                                                    <button v-for="icon in availableIcons" :key="icon" type="button"
+                                                        @click="form.icon = icon"
+                                                        class="p-3 rounded-lg flex items-center justify-center transition-all"
+                                                        :class="form.icon === icon ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500'">
+                                                        <component :is="getIconComponent(icon)" class="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                            </PopoverPanel>
+                                        </transition>
+                                    </Popover>
                                 </div>
 
                                 <div class="mt-6 flex justify-end gap-3">
@@ -91,6 +114,9 @@ import {
     Dialog,
     DialogPanel,
     DialogTitle,
+    Popover,
+    PopoverButton,
+    PopoverPanel
 } from '@headlessui/vue'
 import * as LucideIcons from 'lucide-vue-next'
 import axios from 'axios'

@@ -68,7 +68,7 @@
           class="relative bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-700/50 p-8 shadow-2xl overflow-hidden group">
           <div
             class="absolute top-0 right-0 p-8 opacity-5 dark:opacity-10 group-hover:opacity-10 dark:group-hover:opacity-20 transition-opacity">
-            <component :is="getIconComponent(device.device_type)" class="w-32 h-32" />
+            <component :is="getIconComponent(form.icon || device.icon)" class="w-32 h-32" />
           </div>
 
           <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
@@ -91,16 +91,43 @@
                 Category</label>
               <select v-model="form.device_type"
                 class="w-full px-4 py-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium appearance-none">
-                <option value="unknown">Unknown</option>
-                <option value="Router/Gateway">Router/Gateway</option>
-                <option value="Switch/Bridge">Switch/Bridge</option>
-                <option value="Desktop">Desktop</option>
-                <option value="Laptop">Laptop</option>
-                <option value="Mobile">Mobile</option>
-                <option value="IoT">IoT</option>
-                <option value="Printer">Printer</option>
-                <option value="Camera">Security Camera</option>
+                <option v-for="type in deviceTypes" :key="type" :value="type">{{ type }}</option>
               </select>
+            </div>
+
+            <div class="space-y-1">
+              <label
+                class="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1">Icon
+                Selection</label>
+              <Popover class="relative">
+                <PopoverButton
+                  class="w-full flex items-center justify-between px-4 py-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all hover:bg-white dark:hover:bg-slate-800 group">
+                  <div class="flex items-center gap-3">
+                    <component :is="getIconComponent(form.icon)" class="w-5 h-5 text-blue-500" />
+                    <span class="text-sm font-medium">{{ form.icon || 'Select Icon' }}</span>
+                  </div>
+                  <LucideIcons.ChevronDown
+                    class="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                </PopoverButton>
+
+                <transition enter-active-class="transition duration-200 ease-out"
+                  enter-from-class="translate-y-1 opacity-0" enter-to-class="translate-y-0 opacity-100"
+                  leave-active-class="transition duration-150 ease-in" leave-from-class="translate-y-0 opacity-100"
+                  leave-to-class="translate-y-1 opacity-0">
+                  <PopoverPanel
+                    class="absolute z-50 bottom-full mb-3 right-0 w-[260px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-3xl shadow-2xl p-4 focus:outline-none overflow-hidden">
+                    <div class="grid grid-cols-4 gap-2 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                      <button v-for="iconName in availableIcons" :key="iconName" type="button"
+                        @click="form.icon = iconName"
+                        class="p-3 rounded-xl transition-all flex items-center justify-center"
+                        :class="form.icon === iconName ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'"
+                        v-tooltip="iconName">
+                        <component :is="getIconComponent(iconName)" class="w-5 h-5" />
+                      </button>
+                    </div>
+                  </PopoverPanel>
+                </transition>
+              </Popover>
             </div>
 
             <div class="space-y-1">
@@ -309,30 +336,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive, computed } from 'vue'
+import { Popover, PopoverButton, PopoverPanel } from '@headlessui/vue'
+import * as LucideIcons from 'lucide-vue-next'
+import { ref, onMounted, reactive, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
 import TerminalModal from '../components/TerminalModal.vue'
-import {
-  Scan,
-  Loader2,
-  ArrowLeft,
-  CheckCircle,
-  AlertCircle,
-  Layers,
-  Terminal,
-  ExternalLink,
-  ShieldAlert,
-  Monitor,
-  Laptop,
-  Smartphone,
-  Cpu,
-  Wifi,
-  WifiOff,
-  Database,
-  Camera,
-  HardDrive
-} from 'lucide-vue-next'
 import { formatRelativeTime } from '@/utils/date'
 
 const route = useRoute()
@@ -340,7 +349,7 @@ const device = ref(null)
 const showTerminal = ref(false)
 const sshPort = ref(22)
 
-const form = reactive({ display_name: '', name: '', device_type: '', attributes: {} })
+const form = reactive({ display_name: '', name: '', device_type: '', icon: '', attributes: {} })
 
 const isScanning = ref(false)
 const successMessage = ref('')
@@ -348,25 +357,105 @@ const errorMessage = ref('')
 const history = ref([])
 const fidelityHistory = ref([])
 
+// formatDate removed, formatRelativeTime kept
 const formatTime = (ts) => {
   if (!ts) return 'Unknown'
   return new Date(ts).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-const getIconComponent = (type) => {
-  const map = {
-    'Router/Gateway': Wifi,
-    'Switch/Bridge': Layers,
-    'Desktop': Monitor,
-    'Laptop': Laptop,
-    'Mobile': Smartphone,
-    'IoT': Cpu,
-    'Printer': Database,
-    'Camera': Camera,
-    'NAS': HardDrive
-  }
-  return map[type] || Cpu
+// Map LucideIcons to local aliases for template usage if needed, 
+// but most are used via getIconComponent or component :is
+const Loader2 = LucideIcons.Loader2
+const Scan = LucideIcons.Scan
+const ArrowLeft = LucideIcons.ArrowLeft
+const CheckCircle = LucideIcons.CheckCircle
+const AlertCircle = LucideIcons.AlertCircle
+const Wifi = LucideIcons.Wifi
+const WifiOff = LucideIcons.WifiOff
+const Terminal = LucideIcons.Terminal
+const ExternalLink = LucideIcons.ExternalLink
+const ShieldAlert = LucideIcons.ShieldAlert
+
+const deviceTypes = [
+  'Desktop', 'Laptop', 'Mobile', 'Tablet', 'Server', 'Printer', 'Monitor',
+  'Router', 'Switch', 'Access Point', 'Gateway', 'Firewall', 'NAS',
+  'Smart Plug', 'Smart Bulb', 'Smart Switch', 'Thermostat', 'Camera', 'Door Lock', 'Sensor',
+  'TV', 'Speaker', 'Game Console', 'Media Player', 'Wearable', 'Vehicle',
+  'IoT (Generic)', 'Unknown'
+]
+
+const availableIcons = [
+  'Monitor', 'Laptop', 'Smartphone', 'Tablet', 'Server', 'Printer',
+  'Wifi', 'Network', 'Globe', 'ShieldCheck', 'Database',
+  'Zap', 'Lightbulb', 'Sliders', 'Home', 'Video', 'Lock', 'Eye',
+  'Tv', 'Speaker', 'Gamepad2', 'Film', 'Watch', 'Truck',
+  'Cpu', 'HelpCircle'
+]
+
+const typeToIconMap = {
+  'Desktop': 'Monitor',
+  'Laptop': 'Laptop',
+  'Mobile': 'Smartphone',
+  'Tablet': 'Tablet',
+  'Server': 'Server',
+  'Printer': 'Printer',
+  'Monitor': 'Monitor',
+  'Router': 'Wifi',
+  'Access Point': 'Wifi',
+  'Gateway': 'Globe',
+  'Switch': 'Network',
+  'Firewall': 'ShieldCheck',
+  'NAS': 'Database',
+  'Smart Plug': 'Zap',
+  'Smart Bulb': 'Lightbulb',
+  'Smart Switch': 'Sliders',
+  'Thermostat': 'Home',
+  'Camera': 'Video',
+  'Door Lock': 'Lock',
+  'Sensor': 'Eye',
+  'TV': 'Tv',
+  'Speaker': 'Speaker',
+  'Game Console': 'Gamepad2',
+  'Media Player': 'Film',
+  'Wearable': 'Watch',
+  'Vehicle': 'Truck',
+  'IoT (Generic)': 'Cpu',
+  'Unknown': 'HelpCircle'
 }
+
+const getIconComponent = (name) => {
+  if (!name) return LucideIcons.HelpCircle
+
+  // Direct match
+  if (LucideIcons[name]) return LucideIcons[name]
+
+  // Try PascalCase conversion if user has legacy data
+  const camel = name.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('')
+  if (LucideIcons[camel]) return LucideIcons[camel]
+
+  // Explicit legacy mappings
+  const legacyMap = {
+    'Router/Gateway': 'Wifi',
+    'Switch/Bridge': 'Layers',
+    'Desktop': 'Monitor',
+    'Laptop': 'Laptop',
+    'Mobile': 'Smartphone',
+    'IoT': 'Cpu',
+    'printer': 'Printer',
+    'camera': 'Camera',
+    'hard-drive': 'HardDrive',
+    'nas': 'HardDrive'
+  }
+  if (legacyMap[name]) return LucideIcons[legacyMap[name]] || LucideIcons.HelpCircle
+
+  return LucideIcons.HelpCircle
+}
+
+watch(() => form.device_type, (newType) => {
+  if (newType && typeToIconMap[newType]) {
+    form.icon = typeToIconMap[newType]
+  }
+})
 
 // Logic for Availability Visualization
 const longestOnlineStreak = computed(() => {
@@ -593,14 +682,14 @@ const fetchDevice = async () => {
     device.value = res.data
     form.display_name = device.value.display_name
     form.name = device.value.name
-    form.device_type = device.value.device_type || 'unknown'
+    form.device_type = device.value.device_type || 'Unknown'
+    form.icon = device.value.icon || 'HelpCircle'
     // Initialize attributes if missing
     try {
       form.attributes = device.value.attributes ? JSON.parse(device.value.attributes) : {}
     } catch {
       form.attributes = {}
     }
-    form.device_type = device.value.device_type || 'unknown'
   } catch (e) {
     console.error(e)
   }
