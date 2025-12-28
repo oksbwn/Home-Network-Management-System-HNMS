@@ -3,7 +3,8 @@
     <!-- Header -->
     <div class="flex items-center gap-4">
       <router-link to="/devices"
-        class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-600 dark:text-slate-400">
+        class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-600 dark:text-slate-400"
+        v-tooltip="'Back to Device List'">
         <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M19 12H5M12 19l-7-7 7-7" />
         </svg>
@@ -18,7 +19,8 @@
           {{ device.status }}
         </span>
         <button @click="saveChanges"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+          v-tooltip="'Save Device Changes'">
           Save Changes
         </button>
       </div>
@@ -34,8 +36,18 @@
             <input v-model="form.display_name" type="text"
               class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
           </div>
-          <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hostname</label>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">IP Assignment</label>
+              <select v-model="form.attributes.ip_allocation"
+                class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none">
+                <option :value="undefined">Unknown</option>
+                <option value="static">Static IP</option>
+                <option value="dhcp">DHCP</option>
+              </select>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hostname</label>
             <input v-model="form.name" type="text"
               class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
           </div>
@@ -82,12 +94,14 @@
               </div>
             </div>
             <button v-if="port.port === 22" @click="openSSH(port.port)"
-              class="px-3 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium rounded hover:opacity-90 transition-opacity">
+              class="px-3 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium rounded hover:opacity-90 transition-opacity"
+              v-tooltip="'Open Web-based SSH Terminal'">
               SSH
             </button>
             <a v-if="[80, 443, 3000, 8080, 8000].includes(port.port)" :href="`http://${device.ip}:${port.port}`"
               target="_blank"
-              class="px-3 py-1 bg-emerald-600 text-white text-xs font-medium rounded hover:bg-emerald-700 transition-colors">
+              class="px-3 py-1 bg-emerald-600 text-white text-xs font-medium rounded hover:bg-emerald-700 transition-colors"
+              v-tooltip="'Open Service in New Tab'">
               Open
             </a>
           </div>
@@ -113,7 +127,7 @@ const device = ref(null)
 const showTerminal = ref(false)
 const sshPort = ref(22)
 
-const form = reactive({ display_name: '', name: '', device_type: '' })
+const form = reactive({ display_name: '', name: '', device_type: '', attributes: {} })
 
 const parsedPorts = computed(() => {
   if (!device.value || !device.value.open_ports) return []
@@ -142,6 +156,13 @@ const fetchDevice = async () => {
     device.value = res.data
     form.display_name = device.value.display_name
     form.name = device.value.name
+    form.device_type = device.value.device_type || 'unknown'
+    // Initialize attributes if missing
+    try {
+        form.attributes = device.value.attributes ? JSON.parse(device.value.attributes) : {}
+    } catch {
+        form.attributes = {}
+    }
     form.device_type = device.value.device_type || 'unknown'
   } catch (e) {
     console.error(e)

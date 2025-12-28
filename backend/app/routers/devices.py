@@ -123,6 +123,10 @@ def update_device(device_id: str, payload: DeviceUpdate):
         if payload.icon is not None:
             updates.append("icon = ?")
             params.append(payload.icon)
+
+        if payload.attributes is not None:
+            updates.append("attributes = ?")
+            params.append(payload.attributes)
             
         if not updates:
             # no-op
@@ -166,5 +170,23 @@ def import_devices(devices_data: List[DeviceRead]):
         return {"status": "success", "imported": count}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to import: {str(e)}")
+    finally:
+        conn.close()
+
+@router.delete("/{device_id}")
+def delete_device(device_id: str):
+    conn = get_connection()
+    try:
+        # Verify existence
+        row = conn.execute("SELECT id FROM devices WHERE id = ?", [device_id]).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Device not found")
+        
+        # Manual Cascade
+        conn.execute("DELETE FROM device_ports WHERE device_id = ?", [device_id])
+        conn.execute("DELETE FROM device_status_history WHERE device_id = ?", [device_id])
+        conn.execute("DELETE FROM devices WHERE id = ?", [device_id])
+        
+        return {"status": "success", "message": f"Device {device_id} deleted"}
     finally:
         conn.close()

@@ -10,21 +10,21 @@
         <div class="flex bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
           <button @click="exportDevices"
             class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-l-lg transition text-slate-600 dark:text-slate-400"
-            title="Export JSON">
+            v-tooltip="'Export Devices to JSON'">
             <Download class="h-4 w-4" />
           </button>
           <div class="w-px bg-slate-200 dark:bg-slate-700"></div>
           <button @click="$refs.importInput.click()"
             class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-r-lg transition text-slate-600 dark:text-slate-400"
-            title="Import JSON">
+            v-tooltip="'Import Devices from JSON'">
             <Upload class="h-4 w-4" />
           </button>
         </div>
         <input type="file" ref="importInput" class="hidden" @change="handleImport" accept=".json" />
         <button @click="triggerScan" :disabled="isScanning"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-          <component :is="isScanning ? Loader2 : RefreshCw" class="h-4 w-4" :class="{ 'animate-spin': isScanning }" />
-          {{ isScanning ? 'Scanning...' : 'Scan Network' }}
+          class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
+          v-tooltip="isScanning ? 'Scanning Network...' : 'Scan Network'">
+          <component :is="isScanning ? Loader2 : RefreshCw" class="w-5 h-5" :class="{ 'animate-spin': isScanning }" />
         </button>
       </div>
     </div>
@@ -138,13 +138,18 @@
                 <div class="flex items-center justify-end gap-3">
                   <router-link :to="{ name: 'DeviceDetails', params: { id: device.id } }"
                     class="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
-                    title="View Device Details">
+                    v-tooltip="'View Device Details'">
                     <Eye class="h-4 w-4" />
                   </router-link>
-                  <button @click="openEditDialog(device)"
+                  <button @click.stop="openEditDialog(device)"
                     class="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                    title="Edit Device Name & Type">
+                    v-tooltip="'Edit Device Name & Type'">
                     <Pencil class="h-4 w-4" />
+                  </button>
+                  <button @click.stop="confirmDelete(device)"
+                    class="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                    v-tooltip="'Delete Device'">
+                    <Trash2 class="h-4 w-4" />
                   </button>
                 </div>
               </td>
@@ -203,6 +208,34 @@
         </div>
       </div>
     </div>
+    <!-- Delete Confirmation Modal -->
+    <div v-if="deviceToDelete" class="fixed inset-0 z-50 overflow-y-auto" @click.self="cancelDelete">
+      <div class="flex min-h-screen items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/50 transition-opacity"></div>
+        <div class="relative bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-sm w-full p-6">
+          <div class="flex flex-col items-center text-center">
+            <div class="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+              <Trash2 class="h-6 w-6 text-red-600 dark:text-red-400" />
+            </div>
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">Delete Device?</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Are you sure you want to delete <strong>{{ deviceToDelete.display_name || deviceToDelete.ip }}</strong>?
+              This action cannot be undone.
+            </p>
+            <div class="flex gap-3 w-full">
+              <button @click="cancelDelete"
+                class="flex-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                Cancel
+              </button>
+              <button @click="deleteDevice"
+                class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -210,7 +243,7 @@
 import { ref, onMounted, onUnmounted, reactive, computed } from 'vue'
 import axios from 'axios'
 import Sparkline from '@/components/Sparkline.vue'
-import { Download, Upload, RefreshCw, Loader2, Smartphone, Tablet, Laptop, Monitor, Server, Router as RouterIcon, Network, Layers, Rss, Tv, Cpu, Printer, HardDrive, Gamepad2, HelpCircle, Lightbulb, Plug, Microchip, Camera, Waves, Speaker, Play, Eye, Pencil, Database, Wifi, ZapOff, Ticket } from 'lucide-vue-next'
+import { Download, Upload, RefreshCw, Loader2, Smartphone, Tablet, Laptop, Monitor, Server, Router as RouterIcon, Network, Layers, Rss, Tv, Cpu, Printer, HardDrive, Gamepad2, HelpCircle, Lightbulb, Plug, Microchip, Camera, Waves, Speaker, Play, Eye, Pencil, Database, Wifi, ZapOff, Ticket, Trash2 } from 'lucide-vue-next'
 import { formatRelativeTime } from '@/utils/date'
 
 const devices = ref([])
@@ -317,6 +350,29 @@ const triggerScan = async () => {
     error.value = 'Scan failed'
   } finally {
     isScanning.value = false
+  }
+}
+
+const deviceToDelete = ref(null)
+
+const confirmDelete = (device) => {
+  deviceToDelete.value = device
+}
+
+const cancelDelete = () => {
+  deviceToDelete.value = null
+}
+
+const deleteDevice = async () => {
+  if (!deviceToDelete.value) return
+
+  try {
+    await axios.delete(`/api/v1/devices/${deviceToDelete.value.id}`)
+    devices.value = devices.value.filter(d => d.id !== deviceToDelete.value.id)
+    deviceToDelete.value = null
+  } catch (e) {
+    alert('Failed to delete device')
+    error.value = 'Failed to delete device'
   }
 }
 

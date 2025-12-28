@@ -23,3 +23,4 @@ class DeviceUpdate(BaseModel):
     device_type: Optional[str] = None
     vendor: Optional[str] = None
     icon: Optional[str] = None
+    attributes: Optional[str] = None

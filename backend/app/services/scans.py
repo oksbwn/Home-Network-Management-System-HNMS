@@ -20,16 +20,23 @@ COMMON_PORTS = {
     139: "NetBIOS",
     443: "HTTPS",
     445: "SMB",
+    1400: "Sonos",
     1883: "MQTT",
+    2001: "HomeKit",
     3000: "React/Vite",
+    3232: "ESPHome OTA",
     3306: "MySQL",
     3389: "RDP",
     5000: "API/Flask",
     5432: "PostgreSQL",
+    6053: "ESPHome API",
     8000: "Web",
     8001: "Scanner API",
     8080: "HTTP-Alt",
+    8123: "Home Assistant",
     8883: "MQTT/S",
+    9100: "Printer",
+    32400: "Plex",
 }
 
 async def resolve_hostname(ip: str) -> Optional[str]:

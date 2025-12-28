@@ -13,16 +13,21 @@
                     <span
                         class="text-[10px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 leading-none mb-1">Select
                         Network</span>
-                    <div class="relative flex items-center">
+                    <div class="relative flex items-center gap-2">
                         <select v-model="selectedSubnet"
-                            class="appearance-none bg-transparent text-sm font-bold text-slate-900 dark:text-white outline-none cursor-pointer pr-8 z-10 leading-relaxed">
-                            <option v-for="s in availableSubnets" :key="s" :value="s">{{ s }}.0/24</option>
-                        </select>
-                        <ChevronDown class="w-4 h-4 text-slate-400 absolute right-1 pointer-events-none" />
-                    </div>
-                </div>
+            class="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm transition focus:ring-2 focus:ring-blue-500 outline-none"
+            v-tooltip="'Select Subnet to Visualize'">
+            <option v-for="sub in availableSubnets" :key="sub" :value="sub">{{ sub }}.0/24</option>
+          </select>
+          <button @click="fetchOccupancy" :disabled="loading"
+            class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
+            v-tooltip="'Refresh Occupancy Data'">
+            <component :is="refreshIcon" class="w-5 h-5" :class="{ 'animate-spin': loading, 'text-emerald-500': showSuccess }" />
+          </button>
             </div>
+          </div>
         </div>
+    </div>
 
         <!-- Summary Stats -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -121,7 +126,7 @@
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
-import { Network, ChevronDown, Database, Wifi, ZapOff, CheckCircle } from 'lucide-vue-next'
+import { Network, ChevronDown, Database, Wifi, ZapOff, CheckCircle, RefreshCw } from 'lucide-vue-next'
 import Sparkline from '@/components/Sparkline.vue'
 import { formatRelativeTime } from '@/utils/date'
 
@@ -229,26 +234,43 @@ const parsePortsCount = (ports) => {
     }
 }
 
-onMounted(async () => {
+const loading = ref(false)
+const showSuccess = ref(false)
+const refreshIcon = computed(() => showSuccess.value ? CheckCircle : RefreshCw)
+
+const fetchOccupancy = async () => {
+    loading.value = true
     try {
         const res = await axios.get('/api/v1/devices/')
         devices.value = res.data
-        if (devices.value.length > 0) {
-            const counts = {}
-            devices.value.forEach(d => {
-                const parts = d.ip.split('.')
-                if (parts.length === 4) {
-                    const sub = `${parts[0]}.${parts[1]}.${parts[2]}`
-                    counts[sub] = (counts[sub] || 0) + 1
-                }
-            })
-            const subnetKeys = Object.keys(counts)
-            if (subnetKeys.length > 0) {
-                selectedSubnet.value = subnetKeys.reduce((a, b) => counts[a] > counts[b] ? a : b)
-            }
-        }
+        
+        // Show success state
+        showSuccess.value = true
+        setTimeout(() => {
+            showSuccess.value = false
+        }, 2000)
     } catch (e) {
         console.error("Failed to fetch devices:", e)
+    } finally {
+        loading.value = false
+    }
+}
+
+onMounted(async () => {
+    await fetchOccupancy()
+    if (devices.value.length > 0 && !selectedSubnet.value) {
+        const counts = {}
+        devices.value.forEach(d => {
+             const parts = d.ip.split('.')
+             if (parts.length === 4) {
+                 const sub = `${parts[0]}.${parts[1]}.${parts[2]}`
+                 counts[sub] = (counts[sub] || 0) + 1
+             }
+        })
+        const subnetKeys = Object.keys(counts)
+        if (subnetKeys.length > 0) {
+             selectedSubnet.value = subnetKeys.reduce((a, b) => counts[a] > counts[b] ? a : b)
+        }
     }
 })
 </script>
