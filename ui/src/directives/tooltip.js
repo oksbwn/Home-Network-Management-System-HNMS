@@ -1,48 +1,77 @@
 export default {
   mounted(el, binding) {
+    el._tooltipData = {
+      value: binding.value,
+      arg: binding.arg || 'top'
+    }
+    
     let tooltipDiv = null
+    
+    const updatePosition = () => {
+      if (!tooltipDiv) return
+      
+      const rect = el.getBoundingClientRect()
+      // Use offsetWidth/Height if rect is 0 (can happen on initial append)
+      const tw = tooltipDiv.offsetWidth
+      const th = tooltipDiv.offsetHeight
+      const position = el._tooltipData.arg
+      const offset = 8
+
+      let top, left
+
+      switch (position) {
+        case 'right':
+          top = rect.top + (rect.height - th) / 2
+          left = rect.right + offset
+          break
+        case 'left':
+          top = rect.top + (rect.height - th) / 2
+          left = rect.left - tw - offset
+          break
+        case 'bottom':
+          top = rect.bottom + offset
+          left = rect.left + (rect.width - tw) / 2
+          break
+        default: // top
+          top = rect.top - th - offset
+          left = rect.left + (rect.width - tw) / 2
+      }
+
+      // Viewport collision detection
+      if (left < offset) left = offset
+      if (left + tw > window.innerWidth - offset) {
+        left = window.innerWidth - tw - offset
+      }
+      if (top < offset) top = offset
+      if (top + th > window.innerHeight - offset) {
+        top = window.innerHeight - th - offset
+      }
+
+      tooltipDiv.style.top = `${Math.round(top)}px`
+      tooltipDiv.style.left = `${Math.round(left)}px`
+    }
 
     const createTooltip = () => {
-      if (tooltipDiv) return
+      // Use the latest value from el._tooltipData
+      const text = el._tooltipData.value
+      if (tooltipDiv || !text) return
 
       tooltipDiv = document.createElement('div')
-      tooltipDiv.textContent = binding.value
-      tooltipDiv.className = `
-        fixed z-[9999] px-2.5 py-1.5 text-xs font-medium text-white 
-        bg-slate-900/90 dark:bg-slate-700/90 backdrop-blur-md 
-        rounded-lg shadow-xl pointer-events-none 
-        transition-opacity duration-200 opacity-0 transform scale-95
-        border border-white/10 dark:border-slate-600/50
-      `
-      document.body.appendChild(tooltipDiv)
-
-      // Initial position for calculation
-      const rect = el.getBoundingClientRect()
-      const tooltipRect = tooltipDiv.getBoundingClientRect()
-
-      // Default position: Top
-      let top = rect.top - tooltipRect.height - 8
-      let left = rect.left + (rect.width - tooltipRect.width) / 2
-
-      // Check bounds and adjust
-      if (top < 0) {
-        // Flip to bottom
-        top = rect.bottom + 8
-      }
+      tooltipDiv.textContent = text
+      tooltipDiv.className = 'fixed z-[9999] px-2.5 py-1.5 text-xs font-medium text-white bg-slate-900/90 dark:bg-slate-700/90 backdrop-blur-md rounded-lg shadow-xl pointer-events-none transition-all duration-200 opacity-0 transform scale-95 border border-white/10 dark:border-slate-600/50'
       
-      if (left < 0) left = 8
-      if (left + tooltipRect.width > window.innerWidth) {
-        left = window.innerWidth - tooltipRect.width - 8
-      }
-
-      tooltipDiv.style.top = `${top}px`
-      tooltipDiv.style.left = `${left}px`
+      document.body.appendChild(tooltipDiv)
+      
+      // Give it a tiny bit to get dimensions if needed, though usually offsetWidth works after append
+      updatePosition()
 
       // Animate in
       requestAnimationFrame(() => {
         if (tooltipDiv) {
           tooltipDiv.classList.remove('opacity-0', 'scale-95')
           tooltipDiv.classList.add('opacity-100', 'scale-100')
+          // Re-update position after it has definitely painted once
+          updatePosition()
         }
       })
     }
@@ -56,9 +85,8 @@ export default {
 
     el.addEventListener('mouseenter', createTooltip)
     el.addEventListener('mouseleave', removeTooltip)
-    el.addEventListener('click', removeTooltip) // Hide on click too usually
+    el.addEventListener('click', removeTooltip)
 
-    // Store cleanup function
     el._tooltipCleanup = () => {
       el.removeEventListener('mouseenter', createTooltip)
       el.removeEventListener('mouseleave', removeTooltip)
@@ -67,14 +95,23 @@ export default {
     }
   },
   updated(el, binding) {
-    // Determine if we need to update text content if hovering?
-    // For simplicity, we just leverage the mouseenter redraw with new binding.value if needed,
-    // but binding.value is read in createTooltip. 
-    // If the value changes while hovering, we really should update textContent.
-    // However, usually tooltips are static or re-hovered. 
-    // We'll leave it simple for now. 
-    // To support dynamic updates while hovered:
-    // we could attach the text update logic here, but keeping it simple is safer.
+    // Update the stored data so listeners have latest values
+    el._tooltipData = {
+      value: binding.value,
+      arg: binding.arg || 'top'
+    }
+    
+    // If value becomes falsy while potentially hovering, remove existing tooltip
+    if (!binding.value) {
+      // We don't have direct access to tooltipDiv here, 
+      // but the mouseleave listener or another hover will naturally handle it.
+      // To be immediate, we'll trigger the cleanup's internal removal if we could,
+      // but searching by text is the only way if we don't store tooltipDiv on el.
+      const divs = document.querySelectorAll('.fixed.z-\\[9999\\]')
+      divs.forEach(d => {
+        if (d.textContent === binding.oldValue) d.remove()
+      })
+    }
   },
   unmounted(el) {
     if (el._tooltipCleanup) {

@@ -5,14 +5,10 @@
       'hidden md:flex flex-col bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transition-all duration-300',
       sidebarCollapsed ? 'w-16' : 'w-56'
     ]">
-      <!-- Logo & Toggle -->
-      <div class="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-700">
-        <AppLogo v-if="!sidebarCollapsed" class="scale-90 origin-left" />
-        <button @click="sidebarCollapsed = !sidebarCollapsed"
-          class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
-          v-tooltip="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
-          <component :is="sidebarCollapsed ? ChevronRightIcon : ChevronLeftIcon" class="h-5 w-5" />
-        </button>
+      <!-- Logo -->
+      <div class="h-16 flex items-center justify-center border-b border-slate-200 dark:border-slate-700"
+        :class="sidebarCollapsed ? '' : 'px-4 justify-start'">
+        <AppLogo :compact="sidebarCollapsed" class="scale-90 origin-left" />
       </div>
 
       <!-- Navigation -->
@@ -24,7 +20,7 @@
                 $route.path === item.path || ($route.path.startsWith(item.path) && item.path !== '/')
                   ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
                   : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-              ]" v-tooltip="sidebarCollapsed ? item.name : null">
+              ]" v-tooltip:right="sidebarCollapsed ? item.name : null">
               <component :is="item.icon" class="h-5 w-5 flex-shrink-0" :class="sidebarCollapsed ? '' : 'mr-3'" />
               <span v-if="!sidebarCollapsed">{{ item.name }}</span>
             </router-link>
@@ -32,11 +28,19 @@
         </ul>
       </nav>
 
-      <!-- Version -->
-      <div class="p-4 border-t border-slate-200 dark:border-slate-700">
-        <div v-if="!sidebarCollapsed" class="text-xs text-slate-500 dark:text-slate-600 text-center">
+      <!-- Version & Toggle -->
+      <div class="p-2 border-t border-slate-200 dark:border-slate-700 space-y-2">
+        <div v-if="!sidebarCollapsed"
+          class="text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 text-center py-2">
           v0.3.0
         </div>
+        <button @click="sidebarCollapsed = !sidebarCollapsed"
+          class="w-full flex items-center p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-all duration-300"
+          :class="sidebarCollapsed ? 'justify-center' : 'px-3 space-x-3'"
+          v-tooltip:right="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+          <component :is="sidebarCollapsed ? ChevronRightIcon : ChevronLeftIcon" class="h-5 w-5 flex-shrink-0" />
+          <span v-if="!sidebarCollapsed" class="text-sm font-medium">Collapse</span>
+        </button>
       </div>
     </aside>
 
@@ -99,7 +103,7 @@ import {
   BellIcon
 } from '@heroicons/vue/24/outline'
 
-const sidebarCollapsed = ref(false)
+const sidebarCollapsed = ref(true)
 const mobileMenuOpen = ref(false)
 
 const navItems = [

@@ -36,7 +36,7 @@
       </div>
     </div>
 
-    <div class="flex flex-col leading-none">
+    <div v-if="!compact" class="flex flex-col leading-none">
       <span
         class="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase transition-colors group-hover:text-blue-500">
         HNMS
@@ -48,5 +48,10 @@
 </template>
 
 <script setup>
-// Minimal branding component
+defineProps({
+  compact: {
+    type: Boolean,
+    default: false
+  }
+})
 </script>
