@@ -1,22 +1,38 @@
 import duckdb
 from pathlib import Path
 from app.core.config import get_settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_connection() -> duckdb.DuckDBPyConnection:
+    """
+    Returns a NEW DuckDB connection. 
+    Opening a connection in DuckDB is fast and recommended for thread safety in web apps.
+    Callers MUST call .close() when done.
+    """
     settings = get_settings()
     db_path = Path(settings.db_path)
     
     # Ensure directory exists
     db_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # Return a new connection. DuckDB is fast at this.
-    return duckdb.connect(str(db_path))
+    # Open a new connection. 
+    # This ensures each thread has its own transaction state.
+    conn = duckdb.connect(str(db_path))
+    
+    
+    return conn
+
+def commit(conn: duckdb.DuckDBPyConnection) -> None:
+    """Commits the given connection."""
+    if conn:
+        conn.commit()
 
 def init_db() -> None:
     settings = get_settings()
     print(f"Initializing database at {settings.db_path}...")
     
-    # Use a temporary connection for initialization
     conn = get_connection()
     try:
         if settings.db_init_mode == "recreate":
@@ -38,6 +54,10 @@ def init_db() -> None:
         migrate_db(conn)
         
         print("Database initialized successfully.")
+        conn.commit()
+    except Exception as e:
+        print(f"ERROR during database initialization: {e}")
+        raise e
     finally:
         conn.close()
 
@@ -63,7 +83,7 @@ def migrate_db(conn: duckdb.DuckDBPyConnection) -> None:
         print("Migration: Adding 'status' column to 'devices'")
         conn.execute("ALTER TABLE devices ADD COLUMN status TEXT DEFAULT 'unknown'")
 
-    # Ensure device_status_history table exists (though schema.sql should handle it)
+    # Ensure device_status_history table exists
     conn.execute("""
         CREATE TABLE IF NOT EXISTS device_status_history (
             id TEXT PRIMARY KEY,
@@ -72,3 +92,36 @@ def migrate_db(conn: duckdb.DuckDBPyConnection) -> None:
             changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # Migration for device_ports UNIQUE constraint
+    # DuckDB doesn't allow adding UNIQUE to existing tables.
+    # We check if it exists by looking at indexes or trying a dummy insert (or just check table_info if supported)
+    # Safer: check if we've already run this migration using a config key or checking schema
+    # PRAGMA table_info doesn't show UNIQUE easily, but we can check the table definition
+    master = conn.execute("SELECT sql FROM sqlite_master WHERE name = 'device_ports'").fetchone()
+    if master and "UNIQUE" not in master[0]:
+        print("Migration: Adding UNIQUE constraint to 'device_ports'")
+        # Ensure we start fresh
+        conn.execute("DROP TABLE IF EXISTS device_ports_new")
+        conn.execute("""
+            CREATE TABLE device_ports_new (
+                device_id  TEXT NOT NULL,
+                port       INTEGER NOT NULL,
+                protocol   TEXT NOT NULL,
+                service    TEXT,
+                banner     TEXT,
+                last_seen  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(device_id, port, protocol)
+            );
+        """)
+        # De-duplicate: Keep the most recent last_seen and any service/banner
+        conn.execute("""
+            INSERT INTO device_ports_new (device_id, port, protocol, service, banner, last_seen)
+            SELECT device_id, port, protocol, arg_max(service, last_seen), arg_max(banner, last_seen), MAX(last_seen)
+            FROM device_ports
+            GROUP BY device_id, port, protocol
+        """)
+        conn.execute("DROP TABLE device_ports")
+        conn.execute("ALTER TABLE device_ports_new RENAME TO device_ports")
+    
+    conn.commit()

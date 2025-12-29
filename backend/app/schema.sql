@@ -63,7 +63,8 @@ CREATE TABLE IF NOT EXISTS device_ports (
     protocol   TEXT NOT NULL,
     service    TEXT,
     banner     TEXT,
-    last_seen  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    last_seen  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(device_id, port, protocol)
 );
 
 -- scan_schedules

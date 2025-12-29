@@ -1,324 +1,188 @@
-import json
 import asyncio
-import subprocess
-import re
-import ipaddress
-import socket
-from typing import Optional, List, Dict, Any
-from uuid import uuid4
+import json
+import uuid
+import logging
 from datetime import datetime, timezone
+from typing import List, Dict, Any, Optional
+from scapy.all import ARP, Ether, srp
 from app.core.db import get_connection
 
-COMMON_PORTS = {
-    21: "FTP",
-    22: "SSH",
-    23: "Telnet",
-    25: "SMTP",
-    53: "DNS",
-    80: "HTTP",
-    111: "RPCBind",
-    139: "NetBIOS",
-    443: "HTTPS",
-    445: "SMB",
-    1400: "Sonos",
-    1883: "MQTT",
-    2001: "HomeKit",
-    3000: "React/Vite",
-    3232: "ESPHome OTA",
-    3306: "MySQL",
-    3389: "RDP",
-    5000: "API/Flask",
-    5432: "PostgreSQL",
-    6053: "ESPHome API",
-    8000: "Web",
-    8001: "Scanner API",
-    8080: "HTTP-Alt",
-    8123: "Home Assistant",
-    8883: "MQTT/S",
-    9100: "Printer",
-    32400: "Plex",
-}
+logger = logging.getLogger(__name__)
 
 async def resolve_hostname(ip: str) -> Optional[str]:
-    """Tries to resolve IP to hostname."""
     try:
-        # Using a small timeout implicitly via asyncio.to_thread and gethostbyaddr
-        res = await asyncio.to_thread(socket.gethostbyaddr, ip)
-        return res[0]
-    except:
-        return None
-
-# Conditional import of scapy
-try:
-    from scapy.all import ARP, Ether, srp, conf
-    SCAPY_AVAILABLE = True
-except ImportError:
-    SCAPY_AVAILABLE = False
-
-async def native_ping(ip: str) -> bool:
-    """Uses system ping to check if a host is up."""
-    try:
-        cmd = ["ping", "-n", "1", "-w", "1000", ip]
-        res = await asyncio.to_thread(
-            subprocess.run, cmd, 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE, 
-            text=True
-        )
-        if res.returncode == 0:
-            if "Reply from" in res.stdout:
-                return True
-        return False
-    except Exception as e:
-        print(f"DEBUG PING ERROR for {ip}: {e}")
-        return False
-
-def get_arp_table() -> dict[str, str]:
-    """Parses 'arp -a' output into an IP -> MAC mapping."""
-    arp_map = {}
-    try:
-        output = subprocess.check_output(["arp", "-a"], text=True)
-        matches = re.findall(r"(\d+\.\d+\.\d+\.\d+)\s+([0-9a-fA-F:-]{17})", output)
-        for ip, mac in matches:
-            normalized_mac = mac.replace('-', ':').lower()
-            arp_map[ip] = normalized_mac
-    except Exception as e:
-        print(f"DEBUG ERROR: Failed to read ARP table: {e}")
-    return arp_map
-
-async def check_port(ip: str, port: int, timeout: float = 1.0) -> Optional[Dict[str, Any]]:
-    """Checks if a TCP port is open."""
-    try:
-        conn = asyncio.open_connection(ip, port)
-        _, writer = await asyncio.wait_for(conn, timeout=timeout)
-        writer.close()
-        await writer.wait_closed()
-        return {
-            "port": port,
-            "protocol": "TCP",
-            "service": COMMON_PORTS.get(port, "Unknown")
-        }
-    except:
-        return None
-
-async def scan_ports(ip: str, ports: List[int] = None) -> List[Dict[str, Any]]:
-    """Scans a list of ports on a given IP and returns detailed records."""
-    if not ports:
-        ports = list(COMMON_PORTS.keys())
-    
-    tasks = [check_port(ip, port) for port in ports]
-    results = await asyncio.gather(*tasks)
-    return [p for p in results if p is not None]
-
-def force_arp_entry(ip: str) -> None:
-    """Forces an ARP entry by sending a ping (Windows/Linux)."""
-    try:
-        # ping -n 1 on Windows, -c 1 on Linux. We detect strictly for Windows environment here or generic.
-        # Since we are on Windows per user env:
-        subprocess.run(["ping", "-n", "1", "-w", "500", ip], 
-                       stdout=subprocess.DEVNULL, 
-                       stderr=subprocess.DEVNULL)
-    except:
-        pass
-
-async def run_scan_job(scan_id: str, target: str, scan_type: str) -> None:
-    conn = get_connection()
-    try:
-        now = datetime.now(timezone.utc)
-        print(f"DEBUG: Starting scan {scan_id}. Target: {target}, Type: {scan_type}")
-        discovered_devices = []
-
-        # 1. Try Scapy first
-        if SCAPY_AVAILABLE and scan_type in ["arp", "ping"]:
+        import socket
+        def sync_resolve():
             try:
-                print(f"DEBUG: Attempting Scapy ARP scan on {target}")
-                ans, unans = await asyncio.to_thread(
-                    srp, 
-                    Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=target), 
-                    timeout=2, 
-                    verbose=False
+                return socket.gethostbyaddr(ip)[0]
+            except:
+                return None
+        return await asyncio.to_thread(sync_resolve)
+    except:
+        return None
+
+async def scan_ports(ip: str, ports: List[int] = [80, 443, 22, 21, 23, 8080, 5000, 3000, 8123]) -> List[Dict[str, Any]]:
+    port_semaphore = asyncio.Semaphore(10)
+    
+    async def check_port(p):
+        async with port_semaphore:
+            def sync_check():
+                import socket
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.settimeout(1.0)
+                    if s.connect_ex((ip, p)) == 0:
+                        try:
+                            service = socket.getservbyport(p)
+                        except:
+                            service = "unknown"
+                        return {"port": p, "protocol": "tcp", "service": service}
+                    return None
+            return await asyncio.to_thread(sync_check)
+
+    results = await asyncio.gather(*(check_port(p) for p in ports))
+    return [r for r in results if r]
+
+async def scan_device(device_id: str, ip: str) -> List[Dict[str, Any]]:
+    """Deep scan for a specific device."""
+    top_ports = list(range(1, 1025))
+    found = await scan_ports(ip, top_ports)
+    
+    def update_db():
+        conn = get_connection()
+        try:
+            conn.execute("UPDATE devices SET open_ports = ?, last_seen = ? WHERE id = ?", [json.dumps(found), datetime.now(timezone.utc), device_id])
+            conn.execute("DELETE FROM device_ports WHERE device_id = ?", [device_id])
+            for p in found:
+                conn.execute(
+                    "INSERT INTO device_ports (device_id, port, protocol, service, last_seen) VALUES (?, ?, ?, ?, ?)",
+                    [device_id, p["port"], p["protocol"], p["service"], datetime.now(timezone.utc)]
                 )
-                for snd, rcv in ans:
-                    discovered_devices.append({
-                        "ip": rcv.psrc,
-                        "mac": rcv.hwsrc,
-                        "hostname": None 
-                    })
+            conn.commit()
+        finally:
+            conn.close()
+    
+    await asyncio.to_thread(update_db)
+    return found
+
+async def run_scan_job(scan_id: str, target: str, scan_type: str = "arp", options: Optional[Dict[str, Any]] = None):
+    try:
+        job_start = datetime.now(timezone.utc)
+        logger.info(f"Starting scan job {scan_id} for target {target}")
+        
+        # 1. Ensure scan status is running with a start time
+        def start_scan():
+            conn = get_connection()
+            try:
+                conn.execute("UPDATE scans SET status = 'running', started_at = ?, error_message = NULL WHERE id = ?", [job_start, scan_id])
+                conn.commit()
+            finally:
+                conn.close()
+        await asyncio.to_thread(start_scan)
+
+        # 2. Perform Network Discovery
+        def network_discovery():
+            try:
+                logger.info(f"Triggering Scapy ARP discovery for {target}...")
+                ans, unans = srp(Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=target), timeout=5, retry=2, verbose=False)
+                results = [{"ip": rcve.psrc, "mac": rcve.hwsrc} for sent, rcve in ans]
+                logger.info(f"Scapy discovery found {len(results)} raw responses.")
+                return results
             except Exception as e:
-                print(f"DEBUG: Scapy failed or driver missing: {e}. Falling back to native.")
+                logger.error(f"Scapy scan failed critical error: {e}")
+                return []
 
-        # 2. Native Fallback
-        if not discovered_devices and scan_type in ["arp", "ping"]:
-            print("DEBUG: Using Native Fallback (Ping + ARP Cache)")
-            targets_to_ping = []
-            for part in target.split():
-                try:
-                    if '/' in part:
-                        net = ipaddress.ip_network(part, strict=False)
-                        if net.num_addresses > 2:
-                            targets_to_ping.extend([str(ip) for ip in net.hosts()])
-                        else:
-                            targets_to_ping.extend([str(ip) for ip in net])
-                    else:
-                        targets_to_ping.append(part)
-                except:
-                    targets_to_ping.append(part)
+        raw_devices = await asyncio.to_thread(network_discovery)
+        
+        # CRITICAL FIX: Deduplicate results BEFORE processing or saving.
+        # This prevents 499+ devices being shown in the history.
+        unique_devices_map = {}
+        for d in raw_devices:
+            key = (d["mac"] or d["ip"]).lower()
+            if key not in unique_devices_map:
+                unique_devices_map[key] = d
+        
+        unique_devices = list(unique_devices_map.values())
+        logger.info(f"Filtered {len(raw_devices)} raw responses down to {len(unique_devices)} unique devices.")
 
-            semaphore = asyncio.Semaphore(50)
-            async def sem_ping(ip):
-                async with semaphore:
-                    return await native_ping(ip), ip
-            
-            ping_results = await asyncio.gather(*(sem_ping(ip) for ip in targets_to_ping))
-            up_ips = [ip for is_up, ip in ping_results if is_up]
-            
-            # Force ARP cache population for discovered IPs
-            for ip in up_ips:
-                await asyncio.to_thread(force_arp_entry, ip)
-                
-            arp_table = get_arp_table()
-            
-            for ip in up_ips:
-                discovered_devices.append({
-                    "ip": ip,
-                    "mac": arp_table.get(ip),
-                    "hostname": None
-                })
-
-        # 3. Process Results
-        unique_devices = list({d["ip"]: d for d in discovered_devices}.values())
-        mac_count = sum(1 for d in unique_devices if d["mac"])
-        print(f"DEBUG: Found {len(unique_devices)} unique devices. MACs found: {mac_count}")
-
-        # Parallelize device enrichment (hostname and ports)
-        # Use a semaphore to avoid overwhelming the system/network
-        semaphore = asyncio.Semaphore(10) # Process up to 10 devices in parallel
-
+        # 3. Parallelize device enrichment
+        semaphore = asyncio.Semaphore(4)
         async def process_single_device(device):
             async with semaphore:
-                ip = device["ip"]
-                mac = device["mac"]
-                
-                # 4. Resolve Hostname & Trace Ports
-                # Adding individual timeouts to prevent a single hang from blocking everything
+                ip, mac = device["ip"], device["mac"]
                 hostname = await resolve_hostname(ip)
+                # Keep discovery port scan minimal
                 ports_list = await scan_ports(ip)
+                return {"ip": ip, "mac": mac, "hostname": hostname, "ports_list": ports_list, "result_id": str(uuid.uuid4())}
 
-                result_id = str(uuid4())
+        processed_results = []
+        if unique_devices:
+            processed_results = await asyncio.gather(*(process_single_device(d) for d in unique_devices))
+
+        # 4. Save Results
+        def save_and_update():
+            conn = get_connection()
+            try:
+                save_now = datetime.now(timezone.utc)
+                for res in processed_results:
+                    ip, mac, hostname, ports_list, result_id = res["ip"], res["mac"], res["hostname"], res["ports_list"], res["result_id"]
+                    
+                    conn.execute(
+                        "INSERT INTO scan_results (id, scan_id, ip, mac, hostname, open_ports, first_seen, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        [result_id, scan_id, ip, mac, hostname, json.dumps(ports_list), save_now, save_now]
+                    )
+                conn.commit()
+            finally:
+                conn.close()
+        
+        if processed_results:
+            await asyncio.to_thread(save_and_update)
+            from app.services.devices import upsert_device_from_scan
+            for res in processed_results:
+                await upsert_device_from_scan(res["ip"], res["mac"], res["hostname"], res["ports_list"])
+
+        # 5. Handle Offline state
+        def finalize_scan():
+            conn = get_connection()
+            try:
+                final_now = datetime.now(timezone.utc)
+                offline_devices = conn.execute(
+                    "SELECT id, ip, mac, display_name, vendor, icon FROM devices WHERE status = 'online' AND last_seen < ?",
+                    [job_start]
+                ).fetchall()
                 
-                # We need a new connection per task or a thread-safe way, 
-                # but to avoid lock contention, we'll do the inserts here.
-                # DuckDB handles multiple connections as long as they are from the same process.
-                job_conn = get_connection()
-                try:
-                    job_now = datetime.now(timezone.utc)
-                    job_conn.execute(
-                        """
-                        INSERT INTO scan_results
-                        (id, scan_id, ip, mac, hostname, open_ports, os, first_seen, last_seen)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        [result_id, scan_id, ip, mac, hostname, json.dumps(ports_list), None, job_now, job_now]
+                for d_id, d_ip, d_mac, d_name, d_vendor, d_icon in offline_devices:
+                    conn.execute("UPDATE devices SET status = 'offline' WHERE id = ?", [d_id])
+                    conn.execute(
+                        "INSERT INTO device_status_history (id, device_id, status, changed_at) VALUES (?, ?, ?, ?)",
+                        [str(uuid.uuid4()), d_id, 'offline', final_now]
                     )
 
-                    # 5. Persist Open Ports
-                    for p in ports_list:
-                        job_conn.execute(
-                            """
-                            INSERT INTO device_ports (device_id, port, protocol, service, last_seen)
-                            VALUES (?, ?, ?, ?, ?)
-                            """,
-                            [mac or ip, p["port"], p["protocol"], p["service"], job_now]
-                        )
+                conn.execute("UPDATE scans SET status = 'done', finished_at = ? WHERE id = ?", [final_now, scan_id])
+                conn.commit()
+                return offline_devices
+            finally:
+                conn.close()
 
-                    # upsert device
-                    from app.services.devices import upsert_device_from_scan
-                    await upsert_device_from_scan(ip, mac, hostname, ports_list)
-                finally:
-                    job_conn.close()
-
-        # Execute processing jobs in parallel
-        if unique_devices:
-            await asyncio.gather(*(process_single_device(d) for d in unique_devices))
-
-        # 6. Post-scan: Mark devices as offline if they were not seen in this scan
-        # We only do this for devices that were previously 'online'
-        # and whose last_seen is still older than this scan's start time.
-        from app.services.devices import record_status_change, publish_device_offline
+        offline_list = await asyncio.to_thread(finalize_scan)
         
-        # We need to be careful not to mark everything offline if it was a targeted scan,
-        # but for now, let's assume discovery scans should refresh status.
-        offline_devices = conn.execute(
-            "SELECT id, ip, mac, display_name, vendor, icon FROM devices WHERE status = 'online' AND last_seen < ?",
-            [now]
-        ).fetchall()
-        
-        for d_id, d_ip, d_mac, d_name, d_vendor, d_icon in offline_devices:
-            print(f"DEBUG: Device {d_ip} ({d_id}) not seen in scan. Marking as OFFLINE.")
-            conn.execute("UPDATE devices SET status = 'offline' WHERE id = ?", [d_id])
-            record_status_change(conn, d_id, 'offline', datetime.now(timezone.utc))
-            publish_device_offline({
-                "id": d_id,
-                "ip": d_ip,
-                "mac": d_mac,
-                "hostname": d_name,
-                "vendor": d_vendor,
-                "icon": d_icon,
-                "status": "offline",
-                "timestamp": datetime.now(timezone.utc).isoformat()
+        # Publish MQTT
+        from app.services.devices import publish_device_offline
+        for d_id, d_ip, d_mac, d_name, d_vendor, d_icon in offline_list:
+             await asyncio.to_thread(publish_device_offline, {
+                "id": d_id, "ip": d_ip, "mac": d_mac, "hostname": d_name, "vendor": d_vendor,
+                "icon": d_icon, "status": "offline", "timestamp": datetime.now(timezone.utc).isoformat()
             })
-            
+
+        logger.info(f"Scan job {scan_id} completed. Found {len(processed_results)} unique devices.")
+
     except Exception as e:
-        print(f"DEBUG ERROR in run_scan_job {scan_id}: {e}")
-        # We don't raise here usually to let the worker handle the next job, 
-        # but the worker also has a try-except. Actually, raising is better for worker's error logging.
-        raise e
-    finally:
-        conn.close()
-async def scan_device(device_id: str, ip: str) -> List[Dict[str, Any]]:
-    """
-    Runs a deep scan on a specific device IP.
-    Returns list of open ports.
-    """
-    open_ports = []
-    
-    # We will check COMMON_PORTS.
-    # We use asyncio.wait_for to keep it fast.
-    semaphore = asyncio.Semaphore(50) # Limit concurrent sockets
-
-    async def check_port(port, name):
-        async with semaphore:
+        logger.error(f"Scan job {scan_id} failed: {e}")
+        def fail_scan():
+            conn = get_connection()
             try:
-                # 1s timeout for LAN scan is plenty
-                fut = asyncio.open_connection(ip, port)
-                await asyncio.wait_for(fut, timeout=1.0)
-                return (port, name)
-            except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
-                return None
-
-    tasks = [check_port(p, n) for p, n in COMMON_PORTS.items()]
-    results = await asyncio.gather(*tasks)
-    
-    conn = get_connection()
-    try:
-        # Clear old ports for this device
-        conn.execute("DELETE FROM device_ports WHERE device_id = ?", [device_id])
-        
-        valid_results = [r for r in results if r is not None]
-        
-        for port, service in valid_results:
-            conn.execute(
-                "INSERT INTO device_ports (device_id, port, protocol, service) VALUES (?, ?, ?, ?)",
-                [device_id, port, 'tcp', service]
-            )
-            open_ports.append({"port": port, "service": service, "protocol": "tcp"})
-            
-        # Update device open_ports cache
-        simple_ports = [p["port"] for p in open_ports]
-        conn.execute("UPDATE devices SET open_ports = ? WHERE id = ?", [json.dumps(simple_ports), device_id])
-        
-        conn.commit()
-    finally:
-        conn.close()
-        
-    return open_ports
+                conn.execute("UPDATE scans SET status = 'error', finished_at = ?, error_message = ? WHERE id = ?", [datetime.now(timezone.utc), str(e), scan_id])
+                conn.commit()
+            finally:
+                conn.close()
+        await asyncio.to_thread(fail_scan)
+        raise e
