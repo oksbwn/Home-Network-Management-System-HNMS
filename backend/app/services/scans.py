@@ -21,23 +21,33 @@ async def resolve_hostname(ip: str) -> Optional[str]:
     except:
         return None
 
-async def scan_ports(ip: str, ports: List[int] = [80, 443, 22, 21, 23, 8080, 5000, 3000, 8123]) -> List[Dict[str, Any]]:
-    port_semaphore = asyncio.Semaphore(10)
-    
+async def scan_ports(ip: str, ports: List[int] = [
+    21, 22, 23, 25, 53, 80, 110, 139, 143, 443, 445, 548, 587, 631, 993, 995, 1883, 2049, 2375, 3000, 32400, 3306, 3389, 5000, 5353, 5432, 5555, 5683, 5900, 6379, 8006, 8080, 8081, 8123, 8443, 8883, 8888, 9000, 9090, 9091, 10000
+]) -> List[Dict[str, Any]]:
+    # Use native asyncio for better performance
+    semaphore = asyncio.Semaphore(50) # Allow more concurrency
+
     async def check_port(p):
-        async with port_semaphore:
-            def sync_check():
-                import socket
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.settimeout(1.0)
-                    if s.connect_ex((ip, p)) == 0:
-                        try:
-                            service = socket.getservbyport(p)
-                        except:
-                            service = "unknown"
-                        return {"port": p, "protocol": "tcp", "service": service}
-                    return None
-            return await asyncio.to_thread(sync_check)
+        async with semaphore:
+            try:
+                # 1 second timeout
+                fut = asyncio.open_connection(ip, p)
+                reader, writer = await asyncio.wait_for(fut, timeout=1.0)
+                writer.close()
+                await writer.wait_closed()
+                
+                # Resolve service name in thread to avoid blocking loop
+                def get_service():
+                    import socket
+                    try: return socket.getservbyport(p)
+                    except: return "unknown"
+                
+                service = await asyncio.to_thread(get_service)
+                return {"port": p, "protocol": "tcp", "service": service}
+            except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
+                return None
+            except Exception:
+                return None
 
     results = await asyncio.gather(*(check_port(p) for p in ports))
     return [r for r in results if r]

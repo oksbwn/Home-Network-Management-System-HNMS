@@ -12,6 +12,7 @@ from app.routers.schedules import router as schedules_router
 from app.services.worker import scheduler_loop, scan_runner_loop
 from app.routers.ssh import router as ssh_router
 from app.routers.events import router as events_router
+from app.routers.mqtt import router as mqtt_router
 
 logger = logging.getLogger(__name__)
 app = FastAPI(title="Network Scanner API")
@@ -48,6 +49,7 @@ app.include_router(devices_router, prefix="/api/v1/devices", tags=["devices"])
 app.include_router(schedules_router, prefix="/api/v1/schedules", tags=["schedules"])
 app.include_router(ssh_router, prefix="/api/v1/ssh", tags=["ssh"])
 app.include_router(events_router, prefix="/api/v1/events", tags=["events"])
+app.include_router(mqtt_router, prefix="/api/v1/mqtt", tags=["mqtt"])
 
 # SPA Static File Serving
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "static")

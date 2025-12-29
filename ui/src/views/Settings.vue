@@ -144,6 +144,26 @@
                   <h2 class="text-base font-semibold text-slate-900 dark:text-white">MQTT Configuration</h2>
                   <p class="text-xs text-slate-500">Integration with Home Assistant</p>
                 </div>
+                <div class="ml-auto flex items-center gap-3">
+                  <div v-if="mqttStatus"
+                    class="flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-700">
+                    <div class="w-2 h-2 rounded-full"
+                      :class="mqttStatus === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'"></div>
+                    <span class="text-xs font-medium"
+                      :class="mqttStatus === 'online' ? 'text-emerald-600' : 'text-red-500'">
+                      {{ mqttStatus === 'online' ? 'Broker Online' : 'Broker Offline' }}
+                    </span>
+                  </div>
+                  <button @click="testMqtt" :disabled="testLoading"
+                    class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2">
+                    <Loader2 v-if="testLoading" class="w-3 h-3 animate-spin" />
+                    <svg v-else viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor"
+                      stroke-width="2.5">
+                      <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Test Connection
+                  </button>
+                </div>
               </div>
               <div class="space-y-4">
                 <!-- Connection Details -->
@@ -320,6 +340,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { Save, RotateCcw, Trash2, AlertTriangle, Loader2, Plus } from 'lucide-vue-next'
+import { useNotifications } from '@/composables/useNotifications'
 
 const settings = reactive({
   scan_subnets: '[]',
@@ -338,7 +359,11 @@ const newSubnet = ref('')
 const gist = ref(null)
 const saveStatus = ref('idle')
 const loading = ref(false)
+const testLoading = ref(false)
+const mqttStatus = ref(null)
 const subnetError = ref('')
+
+const { notifySuccess, notifyError } = useNotifications()
 
 // Clear error when user types
 watch(newSubnet, () => {
@@ -419,10 +444,47 @@ const saveSettings = async () => {
   try {
     await axios.post('/api/v1/config/', settings)
     saveStatus.value = 'saved'
+    notifySuccess('Settings saved successfully')
+    // Refresh MQTT status after save
+    setTimeout(fetchMqttStatus, 1000)
     setTimeout(() => { saveStatus.value = 'idle' }, 2000)
   } catch (e) {
-    alert('Failed to save settings')
+    notifyError('Failed to save settings')
     saveStatus.value = 'idle'
+  }
+}
+
+const fetchMqttStatus = async () => {
+  try {
+    const res = await axios.get('/api/v1/mqtt/status')
+    mqttStatus.value = res.data.status
+  } catch (e) {
+    console.error("Failed to fetch MQTT status")
+  }
+}
+
+const testMqtt = async () => {
+  testLoading.value = true
+  try {
+    const res = await axios.post('/api/v1/mqtt/test', {
+      broker: settings.mqtt_broker,
+      port: parseInt(settings.mqtt_port),
+      username: settings.mqtt_username,
+      password: settings.mqtt_password
+    })
+    if (res.data.success) {
+      notifySuccess("MQTT Connection Successful!")
+      mqttStatus.value = 'online'
+    } else {
+      notifyError("Connection Failed: " + (res.data.message || "Unknown error"))
+      mqttStatus.value = 'offline'
+    }
+  } catch (e) {
+    console.error(e)
+    notifyError("Request failed: " + (e.response?.data?.detail || e.message))
+    mqttStatus.value = 'offline'
+  } finally {
+    testLoading.value = false
   }
 }
 
@@ -497,5 +559,6 @@ const formatLastRun = (dateStr) => {
 onMounted(() => {
   fetchSettings()
   fetchGist()
+  fetchMqttStatus()
 })
 </script>

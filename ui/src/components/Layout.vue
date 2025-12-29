@@ -85,12 +85,15 @@
         <router-view />
       </div>
     </main>
+    <!-- Global Notifications -->
+    <NotificationToast />
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import AppLogo from './AppLogo.vue'
+import NotificationToast from './NotificationToast.vue'
 import {
   HomeIcon,
   ComputerDesktopIcon,

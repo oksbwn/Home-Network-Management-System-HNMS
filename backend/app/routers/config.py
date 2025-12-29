@@ -4,6 +4,7 @@ from app.models.config import ConfigItem, ConfigUpdate
 import asyncio
 import json
 from typing import Any
+from app.services.mqtt import MQTTManager
 import logging
 
 logger = logging.getLogger(__name__)
@@ -57,8 +58,12 @@ async def bulk_update_config(payload: dict[str, Any]):
     def update():
         conn = get_connection()
         results = []
+        mqtt_changed = False
         try:
             for key, value in payload.items():
+                if key.startswith("mqtt_"):
+                    mqtt_changed = True
+                    
                 if not isinstance(value, str):
                     val_str = json.dumps(value)
                 else:
@@ -74,7 +79,20 @@ async def bulk_update_config(payload: dict[str, Any]):
                 results.append(ConfigItem(key=key, value=val_str))
             conn.commit()
             logger.info(f"Bulk updated {len(payload)} config items")
-            return results
+            return results, mqtt_changed
         finally:
             conn.close()
-    return await asyncio.to_thread(update)
+            
+    results, mqtt_changed = await asyncio.to_thread(update)
+    
+    if mqtt_changed:
+        logger.info("MQTT settings changed, validating connection...")
+        # Run validation in background (or await if we want to block)
+        # We await it so the response to UI isn't sent until we know the status,
+        # ensuring the subsequent fetchMqttStatus call gets the new value.
+        def validate():
+            MQTTManager.get_instance().test_connection()
+            
+        await asyncio.to_thread(validate)
+        
+    return results
