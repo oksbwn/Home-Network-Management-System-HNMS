@@ -36,8 +36,14 @@ class SSHSession:
             return False
 
     async def read(self):
+        # We don't really need to_thread for a non-blocking recv if it's already ready
+        # But we'll keep it for safety in case of OS-level blocking
         if self.shell and self.shell.recv_ready():
-            return await asyncio.to_thread(self.shell.recv, 1024)
+            try:
+                return await asyncio.to_thread(self.shell.recv, 1024)
+            except Exception as e:
+                logger.error(f"SSH Read Error: {e}")
+                raise e
         return None
 
     async def write(self, data: str):
@@ -49,27 +55,24 @@ class SSHSession:
 
 @router.websocket("/ws/{ip}")
 async def ssh_websocket_endpoint(websocket: WebSocket, ip: str):
-    print(f"DEBUG: SSH WebSocket connection attempt for {ip}")
+    logger.info(f"SSH WebSocket connection attempt for {ip}")
     await websocket.accept()
-    print("DEBUG: WebSocket accepted")
     session: Optional[SSHSession] = None
     
     try:
         # 1. Wait for credentials
-        print("DEBUG: Waiting for credentials...")
         auth_data = await websocket.receive_json()
-        print(f"DEBUG: Received credentials: {auth_data.keys()}")
         username = auth_data.get("username")
         password = auth_data.get("password")
         port = auth_data.get("port", 22)
 
         session = SSHSession(ip, port, username, password)
-        print(f"DEBUG: Connecting to SSH {ip}:{port}...")
+        logger.info(f"Connecting to SSH {ip}:{port}...")
         if await session.connect():
-            print("DEBUG: SSH Connected Successfully")
+            logger.info("SSH Connected Successfully")
             await websocket.send_text("\r\n*** Connected to " + ip + " ***\r\n")
         else:
-            print("DEBUG: SSH Connection Failed")
+            logger.warning("SSH Connection Failed")
             await websocket.send_text("\r\n*** Connection Failed ***\r\n")
             await websocket.close()
             return
@@ -84,8 +87,10 @@ async def ssh_websocket_endpoint(websocket: WebSocket, ip: str):
                     if data:
                         await websocket.send_bytes(data)
                     else:
-                        await asyncio.sleep(0.01)
+                        # 0.05s = 20Hz polling. Much better for CPU.
+                        await asyncio.sleep(0.05)
                 except Exception as e:
+                    logger.debug(f"SSH Read loop ended: {e}")
                     break
 
         # Start the reader task

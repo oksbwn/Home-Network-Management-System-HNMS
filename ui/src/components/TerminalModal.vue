@@ -121,15 +121,16 @@ const connect = async () => {
         }
     }
 
-    ws.onclose = () => {
-        term.write('\r\n*** Connection Closed ***\r\n')
+    ws.onclose = (e) => {
+        term.write(`\r\n*** Connection Closed (${e.code}: ${e.reason || 'No reason'}) ***\r\n`)
+        console.error("WebSocket Close:", e)
         connected.value = false
         connecting.value = false
     }
 
     ws.onerror = (e) => {
         term.write('\r\n*** WebSocket Error ***\r\n')
-        console.error(e)
+        console.error("WebSocket Error:", e)
         connecting.value = false
     }
 

@@ -1,9 +1,11 @@
 fastapi
 
 uvicorn
+websockets
 
 duckdb
 pydantic-settings
+aiofiles
 
 scapy
 
