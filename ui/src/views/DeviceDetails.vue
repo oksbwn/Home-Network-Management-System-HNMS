@@ -685,11 +685,7 @@ const fetchDevice = async () => {
     form.device_type = device.value.device_type || 'Unknown'
     form.icon = device.value.icon || 'HelpCircle'
     // Initialize attributes if missing
-    try {
-      form.attributes = device.value.attributes ? JSON.parse(device.value.attributes) : {}
-    } catch {
-      form.attributes = {}
-    }
+    form.attributes = device.value.attributes || {}
   } catch (e) {
     console.error(e)
   }

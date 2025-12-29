@@ -226,6 +226,7 @@ const goToDevice = (suffix) => {
 
 const parsePortsCount = (ports) => {
     if (!ports) return 0
+    if (Array.isArray(ports)) return ports.length
     try {
         const parsed = JSON.parse(ports)
         return Array.isArray(parsed) ? parsed.length : 0
