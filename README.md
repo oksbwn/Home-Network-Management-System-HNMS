@@ -37,6 +37,7 @@ HNMS is designed to give you total visibility over your local network. It combin
 | :--- | :--- |
 | **Dual-Mode Discovery** | Parallel Scapy ARP + ICMP Ping sweeps for 100% device parity across Docker & Windows. |
 | **Dynamic Classification** | Fully editable rules engine in the UI for custom icons and device-type matching. |
+| **Integrated SSH** | Direct, secure web-based terminal access to your network devices. |
 | **Analytical History** | Immutable scan logs and uptime trends with sub-second precision. |
 | **Premium UX** | Modern glassmorphism design with unified notification toasts and custom modals. |
 | **Rock-Solid Stability** | Shared-connection logic resolves database locking issues in high-concurrency environments. |
@@ -63,6 +64,10 @@ HNMS is designed to give you total visibility over your local network. It combin
 ### Intelligent Classification
 ![Settings Classification](./.img/classification.png)
 *Manage how devices are identified with customizable Regex and Port rules.*
+
+### Integrated SSH Terminal
+![SSH Terminal](./.img/ssh-terminal.png)
+*Direct, secure web-based shell access to your network devices.*
 
 ### High-Fidelity Analytics
 ![Device Identification](./.img/device-details.png)
