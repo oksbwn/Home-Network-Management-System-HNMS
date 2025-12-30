@@ -1,22 +1,5 @@
 <template>
   <div v-if="device" class="space-y-6 max-w-7xl mx-auto pb-12">
-    <!-- Notifications -->
-    <TransitionGroup enter-active-class="transform transition ease-out duration-300"
-      enter-from-class="translate-y-[-20px] opacity-0" enter-to-class="translate-y-0 opacity-100"
-      leave-active-class="transition ease-in duration-200" leave-from-class="opacity-100" leave-to-class="opacity-0"
-      class="fixed top-6 right-6 z-[60] flex flex-col gap-2">
-      <div v-if="successMessage" key="success"
-        class="px-4 py-3 rounded-xl bg-emerald-500/90 backdrop-blur-md text-white shadow-lg border border-emerald-400/50 flex items-center gap-3">
-        <CheckCircle class="w-5 h-5" />
-        <span class="text-sm font-medium">{{ successMessage }}</span>
-      </div>
-      <div v-if="errorMessage" key="error"
-        class="px-4 py-3 rounded-xl bg-rose-500/90 backdrop-blur-md text-white shadow-lg border border-rose-400/50 flex items-center gap-3">
-        <AlertCircle class="w-5 h-5" />
-        <span class="text-sm font-medium">{{ errorMessage }}</span>
-      </div>
-    </TransitionGroup>
-
     <!-- Header Area -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div class="flex items-center gap-4">
@@ -44,15 +27,14 @@
 
       <div class="flex items-center gap-3">
         <button @click="runDeepScan" :disabled="isScanning"
-          class="px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-bold transition-all flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100 shadow-xl shadow-slate-900/10 dark:shadow-white/5"
+          class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
           v-tooltip="'Deep Port Audit (Scan top 1000 ports)'">
-          <component :is="isScanning ? Loader2 : Scan" class="w-4 h-4" :class="{ 'animate-spin': isScanning }" />
-          {{ isScanning ? 'Auditing...' : 'Deep Scan' }}
+          <component :is="isScanning ? Loader2 : Scan" class="w-5 h-5" :class="{ 'animate-spin': isScanning }" />
         </button>
         <button @click="saveChanges"
-          class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-blue-500/20"
+          class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
           v-tooltip="'Save Device Configuration'">
-          Save Changes
+          <Save class="w-5 h-5" />
         </button>
       </div>
     </div>
@@ -89,10 +71,45 @@
               <label
                 class="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1">Device
                 Category</label>
-              <select v-model="form.device_type"
-                class="w-full px-4 py-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium appearance-none">
-                <option v-for="type in deviceTypes" :key="type" :value="type">{{ type }}</option>
-              </select>
+              <div class="relative w-full group" v-click-outside="() => isCategoryOpen = false">
+                <button @click="isCategoryOpen = !isCategoryOpen"
+                  class="w-full flex items-center justify-between px-4 py-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none hover:ring-4 hover:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium text-slate-900 dark:text-white group-hover:bg-white dark:group-hover:bg-slate-800">
+                  <div class="flex items-center gap-2.5">
+                    <span class="truncate">{{ form.device_type || 'Select Category' }}</span>
+                  </div>
+                  <ChevronDown class="h-4 w-4 text-slate-400 transition-transform duration-200"
+                    :class="{ 'rotate-180': isCategoryOpen }" />
+                </button>
+
+                <transition enter-active-class="transition duration-100 ease-out"
+                  enter-from-class="transform scale-95 opacity-0" enter-to-class="transform scale-100 opacity-100"
+                  leave-active-class="transition duration-75 ease-in" leave-from-class="transform scale-100 opacity-100"
+                  leave-to-class="transform scale-95 opacity-0">
+                  <div v-if="isCategoryOpen"
+                    class="absolute z-[60] mt-2 w-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl py-1.5 overflow-hidden">
+                    <div class="px-3 py-2 border-b border-slate-100 dark:border-slate-700/50">
+                      <div
+                        class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-900/50 rounded-lg border border-transparent focus-within:border-blue-500/30 transition-colors">
+                        <Search class="w-3.5 h-3.5 text-slate-400" />
+                        <input v-model="categorySearch" @click.stop type="text" placeholder="Search..."
+                          class="bg-transparent border-none outline-none text-xs text-slate-700 dark:text-slate-200 w-full placeholder:text-slate-400"
+                          autofocus />
+                      </div>
+                    </div>
+                    <div class="overflow-y-auto max-h-60 custom-scrollbar">
+                      <button v-for="type in filteredDeviceTypes" :key="type"
+                        @click="form.device_type = type; isCategoryOpen = false; categorySearch = ''"
+                        class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left hover:bg-blue-600 hover:text-white transition-colors"
+                        :class="form.device_type === type ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
+                        {{ type }}
+                      </button>
+                      <div v-if="filteredDeviceTypes.length === 0" class="px-4 py-3 text-xs text-slate-400 text-center">
+                        No matches found
+                      </div>
+                    </div>
+                  </div>
+                </transition>
+              </div>
             </div>
 
             <div class="space-y-1">
@@ -115,15 +132,28 @@
                   leave-active-class="transition duration-150 ease-in" leave-from-class="translate-y-0 opacity-100"
                   leave-to-class="translate-y-1 opacity-0">
                   <PopoverPanel
-                    class="absolute z-50 bottom-full mb-3 right-0 w-[260px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-3xl shadow-2xl p-4 focus:outline-none overflow-hidden">
-                    <div class="grid grid-cols-4 gap-2 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
-                      <button v-for="iconName in availableIcons" :key="iconName" type="button"
-                        @click="form.icon = iconName"
-                        class="p-3 rounded-xl transition-all flex items-center justify-center"
-                        :class="form.icon === iconName ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'"
-                        v-tooltip="iconName">
-                        <component :is="getIconComponent(iconName)" class="w-5 h-5" />
-                      </button>
+                    class="absolute z-50 bottom-full mb-3 right-0 w-[260px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+                    <div class="p-3 border-b border-slate-100 dark:border-slate-700/50">
+                      <div
+                        class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-900/50 rounded-lg border border-transparent focus-within:border-blue-500/30 transition-colors">
+                        <Search class="w-3.5 h-3.5 text-slate-400" />
+                        <input v-model="iconSearch" type="text" placeholder="Find icon..."
+                          class="bg-transparent border-none outline-none text-xs text-slate-700 dark:text-slate-200 w-full placeholder:text-slate-400" />
+                      </div>
+                    </div>
+                    <div class="p-4 overflow-y-auto max-h-[220px] custom-scrollbar">
+                      <div class="grid grid-cols-4 gap-2">
+                        <button v-for="iconName in filteredIcons" :key="iconName" type="button"
+                          @click="form.icon = iconName"
+                          class="p-3 rounded-xl transition-all flex items-center justify-center"
+                          :class="form.icon === iconName ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'"
+                          v-tooltip="iconName">
+                          <component :is="getIconComponent(iconName)" class="w-5 h-5" />
+                        </button>
+                      </div>
+                      <div v-if="filteredIcons.length === 0" class="py-2 text-xs text-slate-400 text-center">
+                        No icons found
+                      </div>
                     </div>
                   </PopoverPanel>
                 </transition>
@@ -141,12 +171,38 @@
             <div class="space-y-1">
               <label class="text-[10px] font-black uppercase tracking-widest text_slate-400 dark:text-slate-500 ml-1">IP
                 Reservation</label>
-              <select v-model="form.attributes.ip_allocation"
-                class="w-full px-4 py-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium appearance-none">
-                <option :value="undefined">Dynamic (DHCP)</option>
-                <option value="static">Static IP</option>
-                <option value="dhcp">DHCP Reserved</option>
-              </select>
+              <div class="relative w-full group" v-click-outside="() => isIPOpen = false">
+                <button @click="isIPOpen = !isIPOpen"
+                  class="w-full flex items-center justify-between px-4 py-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none hover:ring-4 hover:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium text-slate-900 dark:text-white group-hover:bg-white dark:group-hover:bg-slate-800">
+                  <span class="truncate">{{ getIPAllocationLabel(form.attributes.ip_allocation) }}</span>
+                  <ChevronDown class="h-4 w-4 text-slate-400 transition-transform duration-200"
+                    :class="{ 'rotate-180': isIPOpen }" />
+                </button>
+
+                <transition enter-active-class="transition duration-100 ease-out"
+                  enter-from-class="transform scale-95 opacity-0" enter-to-class="transform scale-100 opacity-100"
+                  leave-active-class="transition duration-75 ease-in" leave-from-class="transform scale-100 opacity-100"
+                  leave-to-class="transform scale-95 opacity-0">
+                  <div v-if="isIPOpen"
+                    class="absolute z-[60] mt-2 w-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl py-1.5 overflow-hidden">
+                    <button @click="form.attributes.ip_allocation = undefined; isIPOpen = false"
+                      class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left hover:bg-blue-600 hover:text-white transition-colors"
+                      :class="!form.attributes.ip_allocation ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
+                      Dynamic (DHCP)
+                    </button>
+                    <button @click="form.attributes.ip_allocation = 'static'; isIPOpen = false"
+                      class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left hover:bg-blue-600 hover:text-white transition-colors"
+                      :class="form.attributes.ip_allocation === 'static' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
+                      Static IP
+                    </button>
+                    <button @click="form.attributes.ip_allocation = 'dhcp'; isIPOpen = false"
+                      class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left hover:bg-blue-600 hover:text-white transition-colors"
+                      :class="form.attributes.ip_allocation === 'dhcp' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
+                      DHCP Reserved
+                    </button>
+                  </div>
+                </transition>
+              </div>
             </div>
           </div>
 
@@ -202,35 +258,27 @@
               <span class="text-[10px] font-bold text-slate-400">{{ history.length }} Events Recorded</span>
             </div>
 
-            <div class="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+            <div class="grid grid-cols-1 gap-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
               <div v-for="h in history" :key="h.id"
-                class="flex items-center justify-between p-4 rounded-2xl bg-white/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50 hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/5 transition-all group/item">
-                <div class="flex items-center gap-4">
+                class="flex items-center justify-between p-2 rounded-lg bg-white/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50 hover:border-blue-500/30 hover:shadow-sm hover:shadow-blue-500/5 transition-all group/item">
+                <div class="flex items-center gap-2.5">
                   <div :class="h.status === 'online' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'"
-                    class="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-black/5">
-                    <component :is="h.status === 'online' ? Wifi : WifiOff" class="w-5 h-5" />
+                    class="w-7 h-7 rounded-md flex items-center justify-center shadow-sm shadow-black/5">
+                    <component :is="h.status === 'online' ? Wifi : WifiOff" class="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <span class="text-xs font-black uppercase tracking-widest"
+                    <span class="text-[9px] font-black uppercase tracking-widest leading-none"
                       :class="h.status === 'online' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
                       {{ h.status }}
                     </span>
-                    <p class="text-[10px] text-slate-500 mt-0.5 leading-none font-medium">
-                      Scan found device {{ h.status }} at IP {{ device.ip }}
+                    <p class="text-[10px] text-slate-500 font-medium leading-tight">
+                      {{ new Date(h.changed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
                     </p>
                   </div>
                 </div>
                 <div class="text-right">
-                  <div class="text-[11px] font-bold text-slate-900 dark:text-white">
-                    {{ new Date(h.changed_at).toLocaleTimeString([], {
-                      hour: '2-digit', minute: '2-digit', second:
-                        '2-digit'
-                    }) }}
-                  </div>
-                  <div class="text-[9px] text-slate-400 uppercase font-black tracking-tight mt-0.5">
-                    {{ new Date(h.changed_at).toLocaleDateString([], {
-                      month: 'short', day: 'numeric', year: 'numeric'
-                    }) }}
+                  <div class="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                    {{ new Date(h.changed_at).toLocaleDateString([], { month: 'short', day: 'numeric' }) }}
                   </div>
                 </div>
               </div>
@@ -242,66 +290,66 @@
           </div>
         </div>
 
-        <!-- Health & Uptime Metrics -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      </div>
+
+      <!-- Column 3: Ports & Services (Sidebar) -->
+      <div class="space-y-6">
+        <!-- Health & Uptime Metrics (Sidebar Stack) -->
+        <div class="space-y-4">
           <div
             class="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-xl">
             <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Longest Streak</div>
             <div class="text-2xl font-black text-emerald-500">{{ longestOnlineStreak }} <span
                 class="text-xs font-medium text-slate-400">hours</span></div>
-            <div class="mt-2 text-[10px] text-slate-500">Continuous connectivity record</div>
           </div>
           <div
             class="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-xl">
             <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Avg Offline</div>
             <div class="text-2xl font-black text-rose-500">{{ avgOfflineDuration }} <span
                 class="text-xs font-medium text-slate-400">mins</span></div>
-            <div class="mt-2 text-[10px] text-slate-500">Typical downtime between events</div>
           </div>
           <div
             class="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-700/50 p-6 shadow-xl">
             <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total Uptime</div>
             <div class="text-2xl font-black text-blue-500">{{ uptimePercentage }}%</div>
-            <div class="mt-2 text-[10px] text-slate-500">Network reliability score</div>
           </div>
         </div>
-      </div>
 
-      <!-- Column 3: Ports & Services -->
-      <div class="space-y-6">
-        <div class="bg-slate-900 dark:bg-slate-950 rounded-3xl p-8 shadow-2xl relative overflow-hidden h-full">
+        <div
+          class="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-700/50 p-8 shadow-xl relative overflow-hidden">
           <!-- Background Decoration -->
           <div class="absolute -bottom-12 -right-12 w-48 h-48 bg-blue-500/10 dark:bg-blue-400/5 rounded-full blur-3xl">
           </div>
 
-          <h2 class="text-lg font-bold text-white mb-6 flex items-center gap-2">
-            <div class="w-1.5 h-6 bg-blue-400 rounded-full"></div>
+          <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+            <div class="w-1.5 h-6 bg-blue-500 rounded-full"></div>
             Port Lookup Results
           </h2>
 
           <div v-if="parsedPorts.length > 0" class="space-y-3 relative z-10">
             <div v-for="port in parsedPorts" :key="port.port"
-              class="group flex items-center justify-between p-4 bg-white/5 dark:bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all">
+              class="group flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 hover:border-blue-500/30 rounded-2xl transition-all">
               <div class="flex items-center gap-4">
                 <div class="flex flex-col items-center justify-center">
-                  <div class="text-xs font-black text-blue-400 tracking-tighter">{{ port.port }}</div>
+                  <div class="text-xs font-black text-blue-600 dark:text-blue-400 tracking-tighter">{{ port.port }}
+                  </div>
                   <div class="text-[8px] font-black text-slate-500 uppercase">{{ port.protocol || 'TCP' }}</div>
                 </div>
                 <div>
-                  <div class="text-sm font-bold text-white">{{ port.service || 'Unknown' }}</div>
+                  <div class="text-sm font-bold text-slate-900 dark:text-white">{{ port.service || 'Unknown' }}</div>
                   <div class="text-[10px] text-slate-500 font-medium">Service Active</div>
                 </div>
               </div>
 
               <div class="flex items-center gap-2">
                 <button v-if="port.port === 22" @click="openSSH(port.port)"
-                  class="p-2 transition-all rounded-lg bg-white/10 hover:bg-white text-white hover:text-slate-900"
+                  class="p-2 transition-all rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-900 hover:text-white text-slate-600 dark:text-slate-300"
                   v-tooltip="'Terminal Access'">
                   <Terminal class="w-4 h-4" />
                 </button>
                 <a v-if="[80, 443, 8080, 8000, 3000].includes(port.port)" :href="`http://${device.ip}:${port.port}`"
                   target="_blank"
-                  class="p-2 transition-all rounded-lg bg-blue-500/20 hover:bg-blue-500 text-blue-400 hover:text-white"
+                  class="p-2 transition-all rounded-lg bg-blue-500/10 hover:bg-blue-500 text-blue-600 dark:text-blue-400 hover:text-white"
                   v-tooltip="'Open Interface'">
                   <ExternalLink class="w-4 h-4" />
                 </a>
@@ -310,16 +358,16 @@
           </div>
 
           <div v-else class="flex flex-col items-center justify-center py-20 text-center space-y-4">
-            <div class="p-6 bg-white/5 rounded-full">
-              <ShieldAlert class="w-12 h-12 text-slate-700" />
+            <div class="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-full">
+              <ShieldAlert class="w-12 h-12 text-slate-300 dark:text-slate-600" />
             </div>
             <div>
-              <p class="text-white font-bold">No Open Ports</p>
+              <p class="text-slate-900 dark:text-white font-bold">No Open Ports</p>
               <p class="text-xs text-slate-500 mt-1 max-w-[180px]">Run a Deep Scan to audit common network services.</p>
             </div>
           </div>
 
-          <div class="mt-8 pt-8 border-t border-white/10">
+          <div class="mt-8 pt-8 border-t border-slate-100 dark:border-slate-700/50">
             <div
               class="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
               <span>Last Audit Scan</span>
@@ -343,6 +391,7 @@ import { useRoute } from 'vue-router'
 import axios from 'axios'
 import TerminalModal from '../components/TerminalModal.vue'
 import { formatRelativeTime } from '@/utils/date'
+import { useNotifications } from '@/composables/useNotifications'
 
 const route = useRoute()
 const device = ref(null)
@@ -352,10 +401,33 @@ const sshPort = ref(22)
 const form = reactive({ display_name: '', name: '', device_type: '', icon: '', attributes: {} })
 
 const isScanning = ref(false)
-const successMessage = ref('')
-const errorMessage = ref('')
 const history = ref([])
 const fidelityHistory = ref([])
+const { notifySuccess, notifyError } = useNotifications()
+
+const isCategoryOpen = ref(false)
+const isIPOpen = ref(false)
+const categorySearch = ref('')
+const iconSearch = ref('')
+const vClickOutside = {
+  mounted(el, binding) {
+    el._clickOutside = (event) => {
+      if (!(el === event.target || el.contains(event.target))) {
+        binding.value(event)
+      }
+    }
+    document.addEventListener('click', el._clickOutside)
+  },
+  unmounted(el) {
+    document.removeEventListener('click', el._clickOutside)
+  }
+}
+
+const getIPAllocationLabel = (val) => {
+  if (val === 'static') return 'Static IP'
+  if (val === 'dhcp') return 'DHCP Reserved'
+  return 'Dynamic (DHCP)'
+}
 
 // formatDate removed, formatRelativeTime kept
 const formatTime = (ts) => {
@@ -368,13 +440,14 @@ const formatTime = (ts) => {
 const Loader2 = LucideIcons.Loader2
 const Scan = LucideIcons.Scan
 const ArrowLeft = LucideIcons.ArrowLeft
-const CheckCircle = LucideIcons.CheckCircle
-const AlertCircle = LucideIcons.AlertCircle
 const Wifi = LucideIcons.Wifi
 const WifiOff = LucideIcons.WifiOff
 const Terminal = LucideIcons.Terminal
 const ExternalLink = LucideIcons.ExternalLink
 const ShieldAlert = LucideIcons.ShieldAlert
+const Save = LucideIcons.Save
+const ChevronDown = LucideIcons.ChevronDown
+const Search = LucideIcons.Search
 
 const deviceTypes = [
   'Smartphone', 'Tablet', 'Laptop', 'Desktop', 'Server',
@@ -385,12 +458,22 @@ const deviceTypes = [
   'Media Server', 'Home Automation', 'Server Admin', 'Generic'
 ]
 
+const filteredDeviceTypes = computed(() => {
+  if (!categorySearch.value) return deviceTypes
+  return deviceTypes.filter(t => t.toLowerCase().includes(categorySearch.value.toLowerCase()))
+})
+
 const availableIcons = [
   'smartphone', 'tablet', 'laptop', 'monitor', 'server', 'router', 'network',
   'layers', 'rss', 'tv', 'cpu', 'lightbulb', 'plug', 'microchip', 'camera',
   'waves', 'speaker', 'play', 'printer', 'hard-drive', 'gamepad-2',
   'play-circle', 'home', 'settings', 'shield-check', 'help-circle'
 ]
+
+const filteredIcons = computed(() => {
+  if (!iconSearch.value) return availableIcons
+  return availableIcons.filter(i => i.toLowerCase().includes(iconSearch.value.toLowerCase()))
+})
 
 const typeToIconMap = {
   "Smartphone": "smartphone",
@@ -646,16 +729,12 @@ const parsedPorts = computed(() => {
 const runDeepScan = async () => {
   if (isScanning.value) return
   isScanning.value = true
-  successMessage.value = ''
-  errorMessage.value = ''
   try {
     await axios.post(`/api/v1/scans/device/${device.value.id}`)
     await fetchDevice() // Refresh details to show new ports
-    successMessage.value = 'Port scan complete'
-    setTimeout(() => successMessage.value = '', 5000)
+    notifySuccess('Port scan complete')
   } catch (e) {
-    errorMessage.value = 'Scan failed: ' + (e.response?.data?.detail || e.message)
-    setTimeout(() => errorMessage.value = '', 5000)
+    notifyError('Scan failed: ' + (e.response?.data?.detail || e.message))
   } finally {
     isScanning.value = false
   }
@@ -682,16 +761,12 @@ const fetchDevice = async () => {
 }
 
 const saveChanges = async () => {
-  successMessage.value = ''
-  errorMessage.value = ''
   try {
     await axios.put(`/api/v1/devices/${device.value.id}`, form)
-    successMessage.value = 'Changes saved'
-    setTimeout(() => successMessage.value = '', 3000)
+    notifySuccess('Changes saved')
     fetchDevice()
   } catch (e) {
-    errorMessage.value = 'Failed to save: ' + (e.response?.data?.detail || e.message)
-    setTimeout(() => errorMessage.value = '', 5000)
+    notifyError('Failed to save: ' + (e.response?.data?.detail || e.message))
   }
 }
 
