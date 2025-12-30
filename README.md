@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.3.1-blue.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](VERSION)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-monolith-green.svg)](Dockerfile)
 [![Vue](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)](ui/)
@@ -35,20 +35,21 @@ HNMS is designed to give you total visibility over your local network. It combin
 
 | Feature | Description |
 | :--- | :--- |
-| **Real-time Discovery** | Automated Nmap-powered scanning for instant device detection. |
-| **Deep Intelligence** | Service-level fingerprinting to identify types, vendors, and OS hints. |
-| **Connectivity History** | Visual uptime trends and event logs (Join/Disconnect). |
-| **Smart Classification** | 20+ custom vector icons and auto-categorization. |
-| **Monolithic Packaging** | Single-container deployment with SPA routing and integrated persistence. |
+| **Dual-Mode Discovery** | Parallel Scapy ARP + ICMP Ping sweeps for 100% device parity across Docker & Windows. |
+| **Dynamic Classification** | Fully editable rules engine in the UI for custom icons and device-type matching. |
+| **Analytical History** | Immutable scan logs and uptime trends with sub-second precision. |
+| **Premium UX** | Modern glassmorphism design with unified notification toasts and custom modals. |
+| **Rock-Solid Stability** | Shared-connection logic resolves database locking issues in high-concurrency environments. |
+| **Timezone Aware** | Optimized timestamp handling with automatic UTC synchronization. |
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: [Vue 3](https://vuejs.org/) (Composition API), [Vite](https://vitejs.dev/), [Tailwind CSS](https://tailwindcss.com/)
+- **Frontend**: [Vue 3](https://vuejs.org/) (Composition API), [Vite](https://vitejs.dev/), [Tailwind CSS](https://tailwindcss.com/), [Luxon](https://moment.github.io/luxon/)
 - **Backend**: [FastAPI](https://fastapi.tiangolo.com/), [Uvicorn](https://www.uvicorn.org/)
 - **Database**: [DuckDB](https://duckdb.org/) (High-performance analytical storage)
-- **Scanning Engine**: [Nmap](https://nmap.org/)
+- **Scanning Engine**: [Nmap](https://nmap.org/), [Scapy](https://scapy.net/)
 - **Integration**: [MQTT](https://mqtt.org/) (Paho), [Home Assistant Discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery)
 
 ---
@@ -59,9 +60,9 @@ HNMS is designed to give you total visibility over your local network. It combin
 ![Device List](./.img/devices.png)
 *Granular control over your network inventory with vendor-specific metadata.*
 
-### Integrated SSH Terminal
-![SSH Terminal](./.img/ssh-terminal.png)
-*Direct, secure web-based shell access to your network devices.*
+### Intelligent Classification
+![Settings Classification](./.img/classification.png)
+*Manage how devices are identified with customizable Regex and Port rules.*
 
 ### High-Fidelity Analytics
 ![Device Identification](./.img/device-details.png)
@@ -79,6 +80,12 @@ HNMS is designed to give you total visibility over your local network. It combin
 The Hub for your network health.
 - **Sparklines**: Integrated trend lines within metric cards reveal 24-hour activity patterns.
 - **Live Feed**: Pulsing activity log monitors current worker status.
+
+### ⚙️ Rule Management
+Located in **Settings**, the classification engine allows you to:
+- **Prioritize Identification**: Ensure high-priority rules match before generic ones.
+- **Regex Support**: Match devices by Hostname, Vendor, or common local ports.
+- **Icon Selector**: Choose from a premium Lucide-based icon library.
 
 ### 🔍 Device Management
 - **Audit Trigger**: Initiate manual scans to force a directory refresh.
@@ -143,7 +150,7 @@ Sending raw network packets (ARP) requires high-level privileges.
 - Open your terminal (PowerShell or CMD) as **Administrator** before running the uvicorn command.
 
 ### 3. Automatic Fallback
-The system includes a smart fallback. If raw ARP packets are restricted by your security policy, HNMS will automatically pivot to a **Parallel Ping Sweep**. This ensures devices are found even without specialized drivers, though MAC address resolution may be less accurate.
+The system includes a smart fallback. If raw ARP packets are restricted by your security policy, HNMS will automatically pivot to a **Parallel Ping Sweep**. This ensures devices are found even without specialized drivers.
 
 ---
 
