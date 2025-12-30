@@ -312,7 +312,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
-import { formatRelativeTime, formatDate } from '@/utils/date'
+import { formatRelativeTime, formatDate, parseUTC } from '@/utils/date'
 import {
   RefreshCw as RefreshCwIcon,
   Search as SearchIcon,
@@ -561,7 +561,9 @@ const chartSeries = computed(() => {
   const buckets = {}
 
   stats.value.forEach(s => {
-    const date = new Date(s.timestamp)
+    const dt = parseUTC(s.timestamp).toLocal()
+
+    const date = new Date(dt.toMillis())
 
     if (statsTimeRange.value <= 24) {
       // Round to nearest 5 min
@@ -611,7 +613,7 @@ const deviceChartOptions = computed(() => ({
 const deviceChartSeries = computed(() => [{
   name: 'State',
   data: deviceHistory.value.slice().reverse().map(h => ({
-    x: new Date(h.changed_at).getTime(),
+    x: parseUTC(h.changed_at).toMillis(),
     y: h.status === 'online' ? 1 : 0.2
   }))
 }])

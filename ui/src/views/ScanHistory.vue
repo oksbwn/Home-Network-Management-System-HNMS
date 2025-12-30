@@ -216,7 +216,7 @@ import { ref, onMounted, onUnmounted, reactive, computed } from 'vue'
 import axios from 'axios'
 import Sparkline from '@/components/Sparkline.vue'
 import { Trash2, RefreshCw, CheckCircle, AlertTriangle, Clock, ChevronDown, ChevronUp, Activity, Smartphone, Server as ServerIcon, Scan, X, Search } from 'lucide-vue-next'
-import { formatDate, formatRelativeTime } from '@/utils/date'
+import { formatDate, formatRelativeTime, parseUTC } from '@/utils/date'
 import { useNotifications } from '@/composables/useNotifications'
 
 const { notifySuccess, notifyError } = useNotifications()
@@ -456,7 +456,9 @@ const statusClass = (s) => {
 
 const getDuration = (scan) => {
   if (!scan.started_at || !scan.finished_at) return ''
-  const diff = Math.round((new Date(scan.finished_at) - new Date(scan.started_at)) / 1000)
+  const start = parseUTC(scan.started_at)
+  const end = parseUTC(scan.finished_at)
+  const diff = Math.round(end.diff(start, 'seconds').seconds)
   if (diff < 60) return `${diff}s`
   return `${Math.floor(diff / 60)}m ${diff % 60}s`
 }

@@ -8,13 +8,13 @@ import { DateTime } from 'luxon'
 export const formatDate = (timestamp) => {
   if (!timestamp) return 'Never'
   try {
-    const dt = DateTime.fromISO(timestamp)
+    const dt = DateTime.fromISO(timestamp, { zone: 'utc' })
     if (!dt.isValid) {
         // Try fallback for DuckDB strings
-        const dt2 = DateTime.fromSQL(timestamp)
-        return dt2.isValid ? dt2.toFormat('dd/MM/yyyy HH:mm') : timestamp
+        const dt2 = DateTime.fromSQL(timestamp, { zone: 'utc' })
+        return dt2.isValid ? dt2.toLocal().toFormat('dd/MM/yyyy HH:mm') : timestamp
     }
-    return dt.toFormat('dd/MM/yyyy HH:mm')
+    return dt.toLocal().toFormat('dd/MM/yyyy HH:mm')
   } catch (e) {
     return timestamp
   }
@@ -28,13 +28,23 @@ export const formatDate = (timestamp) => {
 export const formatRelativeTime = (timestamp) => {
     if (!timestamp) return 'Never'
     try {
-        const dt = DateTime.fromISO(timestamp)
+        const dt = DateTime.fromISO(timestamp, { zone: 'utc' })
         if (!dt.isValid) {
-            const dt2 = DateTime.fromSQL(timestamp)
-            return dt2.isValid ? dt2.toRelative() : 'Never'
+            const dt2 = DateTime.fromSQL(timestamp, { zone: 'utc' })
+            return dt2.isValid ? dt2.toLocal().toRelative() : 'Never'
         }
-        return dt.toRelative()
+        return dt.toLocal().toRelative()
     } catch {
         return 'Never'
     }
+}
+/**
+ * Parses a string to a Luxon DateTime, forcing UTC.
+ */
+export const parseUTC = (timestamp) => {
+    if (!timestamp) return DateTime.now().toUTC()
+    const dt = DateTime.fromISO(timestamp, { zone: 'utc' })
+    if (dt.isValid) return dt
+    const dt2 = DateTime.fromSQL(timestamp, { zone: 'utc' })
+    return dt2.isValid ? dt2 : DateTime.now().toUTC()
 }
