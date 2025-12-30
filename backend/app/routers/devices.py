@@ -1,33 +1,86 @@
 from fastapi import APIRouter, Query, HTTPException
 from typing import List, Annotated, Optional, Dict, Any
 from app.core.db import get_connection
-from app.models.devices import DeviceRead, DeviceUpdate
+from app.models.devices import DeviceRead, DeviceUpdate, PaginatedDevicesResponse
 from app.services.devices import update_device_fields
-import json, asyncio
+import json, asyncio, math
 
 router = APIRouter()
 
-async def _internal_list_devices(device_type: str | None = None, online_only: bool = False):
+async def _internal_list_devices(
+    device_type: str | None = None, 
+    status: str | None = None,
+    search: str | None = None,
+    sort_by: str = "ip",
+    sort_order: str = "asc",
+    page: int = 1,
+    limit: int = 20
+):
     def query():
         conn = get_connection()
         try:
+            # First, get total count for pagination
+            count_sql = "SELECT COUNT(*) FROM devices"
+            clauses: list[str] = []
+            params: list[object] = []
+            
+            if device_type:
+                clauses.append("device_type = ?")
+                params.append(device_type)
+            if status:
+                clauses.append("status = ?")
+                params.append(status)
+            if search:
+                clauses.append("(ip LIKE ? OR mac LIKE ? OR name LIKE ? OR display_name LIKE ? OR vendor LIKE ?)")
+                search_param = f"%{search}%"
+                params.extend([search_param] * 5)
+            
+            if clauses:
+                count_sql += " WHERE " + " AND ".join(clauses)
+                
+            total = conn.execute(count_sql, params).fetchone()[0]
+            
+            # Calculate global stats for top cards
+            global_stats = {
+                "total": conn.execute("SELECT COUNT(*) FROM devices").fetchone()[0],
+                "online": conn.execute("SELECT COUNT(*) FROM devices WHERE status = 'online'").fetchone()[0],
+                "offline": conn.execute("SELECT COUNT(*) FROM devices WHERE status = 'offline'").fetchone()[0]
+            }
+            vendor_row = conn.execute("""
+                SELECT vendor, COUNT(*) as count 
+                FROM devices 
+                WHERE vendor IS NOT NULL AND vendor != 'Unknown' AND vendor != ''
+                GROUP BY vendor ORDER BY count DESC LIMIT 1
+            """).fetchone()
+            global_stats["top_vendor"] = vendor_row[0] if vendor_row else "None"
+            global_stats["top_vendor_count"] = vendor_row[1] if vendor_row else 0
+
+            # Now fetch the data
             base_sql = """
                 SELECT id, ip, mac, name, display_name, device_type,
                        first_seen, last_seen, vendor, icon, open_ports, status, attributes
                 FROM devices
             """
-            clauses: list[str] = []
-            params: list[object] = []
-            if device_type:
-                clauses.append("device_type = ?")
-                params.append(device_type)
-            if online_only:
-                clauses.append("status = 'online'")
             if clauses:
                 base_sql += " WHERE " + " AND ".join(clauses)
-            base_sql += " ORDER BY ip"
+                
+            # Validate sort_by to prevent injection
+            allowed_sort = ["ip", "mac", "display_name", "device_type", "last_seen", "status", "vendor"]
+            if sort_by not in allowed_sort:
+                safe_sort = "ip"
+            else:
+                safe_sort = sort_by
+                
+            order = "DESC" if sort_order.lower() == "desc" else "ASC"
+            base_sql += f" ORDER BY {safe_sort} {order}"
+            
+            # Pagination
+            offset = (page - 1) * limit
+            base_sql += " LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
+            
             rows = conn.execute(base_sql, params).fetchall()
-            return [
+            items = [
                 DeviceRead(
                     id=r[0], ip=r[1], mac=r[2], name=r[3], display_name=r[4], device_type=r[5],
                     first_seen=r[6], last_seen=r[7], vendor=r[8], icon=r[9],
@@ -37,16 +90,38 @@ async def _internal_list_devices(device_type: str | None = None, online_only: bo
                 )
                 for r in rows
             ]
+            
+            return PaginatedDevicesResponse(
+                items=items,
+                total=total,
+                page=page,
+                limit=limit,
+                total_pages=math.ceil(total / limit) if limit > 0 else 1,
+                global_stats=global_stats
+            )
         finally:
             conn.close()
     return await asyncio.to_thread(query)
 
-@router.get("/", response_model=list[DeviceRead])
+@router.get("/", response_model=PaginatedDevicesResponse)
 async def list_devices(
     device_type: Annotated[str | None, Query()] = None,
-    online_only: Annotated[bool, Query()] = False,
+    status: Annotated[str | None, Query()] = None,
+    search: Annotated[str | None, Query()] = None,
+    sort_by: Annotated[str, Query()] = "ip",
+    sort_order: Annotated[str, Query()] = "asc",
+    page: Annotated[int, Query(ge=1)] = 1,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ):
-    return await _internal_list_devices(device_type=device_type, online_only=online_only)
+    return await _internal_list_devices(
+        device_type=device_type, 
+        status=status, 
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        limit=limit
+    )
 
 @router.get("/{device_id}", response_model=DeviceRead)
 async def get_device(device_id: str):

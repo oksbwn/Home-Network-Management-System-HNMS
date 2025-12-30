@@ -4,7 +4,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-2xl font-semibold text-slate-900 dark:text-white">Devices</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ devices.length }} devices discovered</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ globalStats.total }} devices discovered</p>
       </div>
       <div class="flex items-center gap-3">
         <div class="flex bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -85,27 +85,110 @@
       </div>
     </div>
 
+    <!-- Filters & Search -->
+    <div
+      class="bg-white/60 dark:bg-slate-800/60 backdrop-blur-md rounded-2xl border border-white/20 dark:border-slate-700/50 p-4 shadow-sm flex flex-col gap-4">
+      <div class="flex flex-col md:flex-row gap-4 items-center">
+        <div class="relative flex-1 w-full">
+          <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input v-model="search" @input="debounceFetch" type="text" placeholder="Search IP, Mac, Vendor or Name..."
+            class="w-full pl-11 pr-4 py-2 bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm" />
+        </div>
+        <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <!-- Status Filter -->
+          <div class="relative flex-1 md:w-44 group" v-click-outside="() => isStatusOpen = false">
+            <button @click="isStatusOpen = !isStatusOpen"
+              class="w-full flex items-center justify-between pl-4 pr-3.5 py-2 bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl outline-none hover:ring-2 hover:ring-blue-500/10 transition-all text-sm font-medium text-slate-700 dark:text-slate-300">
+              <div class="flex items-center gap-2.5">
+                <Filter class="h-3.5 w-3.5" :class="statusFilter ? 'text-blue-500' : 'text-slate-400'" />
+                <span>{{ statusFilter ? (statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)) : 'All Statuses'
+                }}</span>
+              </div>
+              <ChevronDown class="h-4 w-4 text-slate-400 transition-transform duration-200"
+                :class="{ 'rotate-180': isStatusOpen }" />
+            </button>
+
+            <transition enter-active-class="transition duration-100 ease-out"
+              enter-from-class="transform scale-95 opacity-0" enter-to-class="transform scale-100 opacity-100"
+              leave-active-class="transition duration-75 ease-in" leave-from-class="transform scale-100 opacity-100"
+              leave-to-class="transform scale-95 opacity-0">
+              <div v-if="isStatusOpen"
+                class="absolute z-[60] mt-2 w-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl py-1.5 overflow-hidden">
+                <button v-for="opt in ['', 'online', 'offline']" :key="opt"
+                  @click="statusFilter = opt; isStatusOpen = false; fetchDevices()"
+                  class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left hover:bg-blue-600 hover:text-white transition-colors"
+                  :class="statusFilter === opt ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
+                  <div class="w-2 h-2 rounded-full"
+                    :class="opt === 'online' ? 'bg-emerald-500' : opt === 'offline' ? 'bg-slate-400' : 'bg-transparent border border-slate-300'">
+                  </div>
+                  {{ opt === '' ? 'All Statuses' : opt.charAt(0).toUpperCase() + opt.slice(1) }}
+                </button>
+              </div>
+            </transition>
+          </div>
+
+          <!-- Type Filter -->
+          <div class="relative flex-1 md:w-44 group" v-click-outside="() => isTypeOpen = false">
+            <button @click="isTypeOpen = !isTypeOpen"
+              class="w-full flex items-center justify-between pl-4 pr-3.5 py-2 bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl outline-none hover:ring-2 hover:ring-blue-500/10 transition-all text-sm font-medium text-slate-700 dark:text-slate-300">
+              <div class="flex items-center gap-2.5">
+                <Layers class="h-3.5 w-3.5" :class="typeFilter ? 'text-blue-500' : 'text-slate-400'" />
+                <span class="truncate">{{ typeFilter || 'All Types' }}</span>
+              </div>
+              <ChevronDown class="h-4 w-4 text-slate-400 transition-transform duration-200"
+                :class="{ 'rotate-180': isTypeOpen }" />
+            </button>
+
+            <transition enter-active-class="transition duration-100 ease-out"
+              enter-from-class="transform scale-95 opacity-0" enter-to-class="transform scale-100 opacity-100"
+              leave-active-class="transition duration-75 ease-in" leave-from-class="transform scale-100 opacity-100"
+              leave-to-class="transform scale-95 opacity-0">
+              <div v-if="isTypeOpen"
+                class="absolute z-[60] mt-2 w-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl py-1.5 overflow-y-auto max-h-60 scrollbar-hide">
+                <button @click="typeFilter = ''; isTypeOpen = false; fetchDevices()"
+                  class="w-full px-4 py-2 text-sm text-left hover:bg-blue-600 hover:text-white transition-colors"
+                  :class="typeFilter === '' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
+                  All Types
+                </button>
+                <button v-for="type in deviceTypes" :key="type"
+                  @click="typeFilter = type; isTypeOpen = false; fetchDevices()"
+                  class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left hover:bg-blue-600 hover:text-white transition-colors"
+                  :class="typeFilter === type ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
+                  <component :is="getIcon(type.toLowerCase())" class="h-3.5 w-3.5 opacity-60" />
+                  {{ type }}
+                </button>
+              </div>
+            </transition>
+          </div>
+        </div>
+      </div>
+      <!-- Display Info Line -->
+      <div class="px-2 flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400">
+        <div class="flex items-center gap-2">
+          <Activity class="h-3.5 w-3.5 text-blue-500" />
+          <span>Showing <b>{{ devices.length }}</b> of <b>{{ totalDevices }}</b> devices matching current filters</span>
+        </div>
+        <div v-if="sortBy" class="hidden sm:block text-[10px] uppercase tracking-wider opacity-60">
+          Sorted by {{ sortBy }} ({{ sortOrder }})
+        </div>
+      </div>
+    </div>
+
     <!-- Devices Table -->
-    <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div
+      class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
           <thead class="bg-slate-50 dark:bg-slate-900/50">
             <tr>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Device</th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Network Info</th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Open Ports</th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Type</th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Last Seen</th>
+              <th v-for="header in tableHeaders" :key="header.key" @click="toggleSort(header.key)"
+                :class="[header.class, 'px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors']">
+                <div class="flex items-center gap-1">
+                  {{ header.label }}
+                  <component :is="getSortIcon(header.key)" class="h-3 w-3"
+                    v-if="sortBy === header.key || header.key === 'ip'" />
+                </div>
+              </th>
               <th
                 class="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Actions</th>
@@ -137,7 +220,8 @@
                 </div>
               </td>
               <td class="px-6 py-4">
-                <div class="text-xs text-slate-600 dark:text-slate-300">{{ device.vendor || 'Unknown' }}</div>
+                <div class="text-xs text-slate-600 dark:text-slate-300 font-medium">{{ device.vendor || 'Unknown' }}
+                </div>
                 <div class="text-xs text-slate-500 font-mono truncate max-w-[200px]">{{ device.mac || 'N/A' }}</div>
               </td>
               <td class="px-6 py-4">
@@ -186,6 +270,21 @@
       </div>
     </div>
 
+    <!-- Pagination -->
+    <div v-if="totalPages > 1" class="flex justify-center items-center gap-2">
+      <button @click="changePage(currentPage - 1)" :disabled="currentPage <= 1"
+        class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+        Previous
+      </button>
+      <div class="px-4 py-2 bg-slate-900 dark:bg-white rounded-lg text-sm font-medium text-white dark:text-slate-900">
+        {{ currentPage }} / {{ totalPages }}
+      </div>
+      <button @click="changePage(currentPage + 1)" :disabled="currentPage >= totalPages"
+        class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+        Next
+      </button>
+    </div>
+
     <!-- Edit Modal -->
     <EditDeviceModal :isOpen="isEditModalOpen" :device="deviceToEdit" @close="isEditModalOpen = false"
       @save="handleDeviceSaved" />
@@ -221,25 +320,89 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, reactive, computed } from 'vue'
+import { ref, onMounted, onUnmounted, reactive, computed, watch } from 'vue'
 import axios from 'axios'
 import Sparkline from '@/components/Sparkline.vue'
 import EditDeviceModal from '@/components/EditDeviceModal.vue'
 import * as LucideIcons from 'lucide-vue-next'
-const { Eye, Pencil, Trash2, Download, Upload, RefreshCw, Loader2 } = LucideIcons
+const { Eye, Pencil, Trash2, Download, Upload, RefreshCw, Loader2, Search, ChevronUp, ChevronDown, ArrowUpDown, Activity, Wifi, Database, ZapOff, Ticket, Filter, Layers } = LucideIcons
 import { formatRelativeTime } from '@/utils/date'
 
 const devices = ref([])
+const totalDevices = ref(0)
+const globalStats = ref({ total: 0, online: 0, offline: 0, top_vendor: 'None', top_vendor_count: 0 })
+const currentPage = ref(1)
+const totalPages = ref(1)
+const limit = ref(20)
+
+const isStatusOpen = ref(false)
+const isTypeOpen = ref(false)
+
+// Custom directive for clicking outside dropdowns
+const vClickOutside = {
+  mounted(el, binding) {
+    el._clickOutside = (event) => {
+      if (!(el === event.target || el.contains(event.target))) {
+        binding.value(event)
+      }
+    }
+    document.addEventListener('click', el._clickOutside)
+  },
+  unmounted(el) {
+    document.removeEventListener('click', el._clickOutside)
+  }
+}
+
+const search = ref('')
+const statusFilter = ref('')
+const typeFilter = ref('')
+const sortBy = ref('ip')
+const sortOrder = ref('asc')
+
 const error = ref('')
 const isScanning = ref(false)
 const isEditModalOpen = ref(false)
 const deviceToEdit = ref(null)
 const successMessage = ref('')
 
+const tableHeaders = [
+  { key: 'display_name', label: 'Device', class: 'w-1/4' },
+  { key: 'mac', label: 'Network Info', class: 'w-1/4' },
+  { key: 'open_ports', label: 'Open Ports', class: 'w-1/6' },
+  { key: 'device_type', label: 'Type', class: 'w-1/6' },
+  { key: 'last_seen', label: 'Last Seen', class: 'w-1/6' },
+]
+
+const deviceTypes = computed(() => {
+  return ['Smartphone', 'Tablet', 'Laptop', 'Desktop', 'Server', 'Router', 'IoT', 'Printer', 'TV', 'Other']
+})
+
+const getSortIcon = (key) => {
+  if (sortBy.value !== key) return ArrowUpDown
+  return sortOrder.value === 'asc' ? ChevronUp : ChevronDown
+}
+
+const toggleSort = (key) => {
+  if (sortBy.value === key) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortBy.value = key
+    sortOrder.value = 'asc'
+  }
+  fetchDevices()
+}
+
+const changePage = (page) => {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+  fetchDevices()
+}
+
 const getIcon = (name) => {
   if (!name) return LucideIcons.HelpCircle
   // Direct match (PascalCase)
   if (LucideIcons[name]) return LucideIcons[name]
+
   // Legacy mapping (kebab-case -> PascalCase or map)
   const legacyMap = {
     'smartphone': 'Smartphone',
@@ -264,13 +427,19 @@ const getIcon = (name) => {
     'hard-drive': 'HardDrive',
     'gamepad-2': 'Gamepad2',
     'help-circle': 'HelpCircle',
-    'computer-desktop': 'Monitor', // HeroIcons compat
+    'computer-desktop': 'Monitor',
     'device-laptop': 'Laptop',
     'device-phone-mobile': 'Smartphone',
     'device-tablet': 'Tablet',
     'server-stack': 'Database',
-    'bolt': 'Zap'
+    'bolt': 'Zap',
+    'activity': 'Activity',
+    'wifi': 'Wifi',
+    'database': 'Database',
+    'zap-off': 'ZapOff',
+    'ticket': 'Ticket'
   }
+
   if (legacyMap[name] && LucideIcons[legacyMap[name]]) return LucideIcons[legacyMap[name]]
 
   // Auto convert kebab to Pascal
@@ -287,29 +456,10 @@ const getDeviceStatusColor = (device) => {
 }
 
 const deviceStats = computed(() => {
-  const total = devices.value.length
-  const online = devices.value.filter(d => d.status === 'online').length
-  const offline = devices.value.filter(d => d.status === 'offline').length
-
-  // Calculate top vendor
-  const vendors = {}
-  devices.value.forEach(d => {
-    const v = d.vendor || 'Unknown'
-    vendors[v] = (vendors[v] || 0) + 1
-  })
-  let topVendor = 'None'
-  let topVendorCount = 0
-  Object.entries(vendors).forEach(([v, count]) => {
-    if (count > topVendorCount && v !== 'Unknown') {
-      topVendor = v
-      topVendorCount = count
-    }
-  })
-
   return [
     {
       label: 'Total Devices',
-      value: total,
+      value: globalStats.value.total,
       icon: LucideIcons.Database,
       color: '#3b82f6',
       bgClass: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
@@ -319,32 +469,32 @@ const deviceStats = computed(() => {
     },
     {
       label: 'Online',
-      value: online,
+      value: globalStats.value.online,
       icon: LucideIcons.Wifi,
       color: '#10b981',
       bgClass: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
       trend: [8, 9, 7, 10, 9, 11, 10, 12, 11, 13],
-      change: '+5.2%',
+      change: 'Active',
       changeType: 'up'
     },
     {
       label: 'Offline',
-      value: offline,
+      value: globalStats.value.offline,
       icon: LucideIcons.ZapOff,
       color: '#f43f5e',
       bgClass: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',
       trend: [2, 3, 4, 3, 3, 3, 3, 3, 3, 3],
-      change: '-1.5%',
+      change: 'Standby',
       changeType: 'down'
     },
     {
       label: 'Top Vendor',
-      value: topVendor.length > 10 ? topVendor.substring(0, 8) + '..' : topVendor,
+      value: globalStats.value.top_vendor.length > 10 ? globalStats.value.top_vendor.substring(0, 8) + '..' : globalStats.value.top_vendor,
       icon: LucideIcons.Ticket,
       color: '#8b5cf6',
       bgClass: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
       trend: [5, 6, 5, 7, 6, 8, 7, 9, 8, 10],
-      change: `count: ${topVendorCount}`,
+      change: `count: ${globalStats.value.top_vendor_count}`,
       changeType: 'up'
     }
   ]
@@ -353,12 +503,36 @@ const deviceStats = computed(() => {
 
 const fetchDevices = async () => {
   try {
-    const res = await axios.get('/api/v1/devices/')
-    devices.value = res.data
+    const res = await axios.get('/api/v1/devices/', {
+      params: {
+        page: currentPage.value,
+        limit: limit.value,
+        search: search.value || undefined,
+        status: statusFilter.value || undefined,
+        device_type: typeFilter.value || undefined,
+        sort_by: sortBy.value,
+        sort_order: sortOrder.value
+      }
+    })
+    devices.value = res.data.items
+    totalDevices.value = res.data.total
+    totalPages.value = res.data.total_pages
+    if (res.data.global_stats) {
+      globalStats.value = res.data.global_stats
+    }
   } catch (e) {
     error.value = 'Failed to load devices'
     console.error(e)
   }
+}
+
+let debounceTimer = null
+const debounceFetch = () => {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    currentPage.value = 1
+    fetchDevices()
+  }, 300)
 }
 
 const triggerScan = async () => {
@@ -375,53 +549,45 @@ const triggerScan = async () => {
 }
 
 const deviceToDelete = ref(null)
-
-const confirmDelete = (device) => {
-  deviceToDelete.value = device
-}
-
-const cancelDelete = () => {
-  deviceToDelete.value = null
-}
+const confirmDelete = (device) => { deviceToDelete.value = device }
+const cancelDelete = () => { deviceToDelete.value = null }
 
 const deleteDevice = async () => {
   if (!deviceToDelete.value) return
-
   try {
     await axios.delete(`/api/v1/devices/${deviceToDelete.value.id}`)
-    devices.value = devices.value.filter(d => d.id !== deviceToDelete.value.id)
+    await fetchDevices()
     deviceToDelete.value = null
   } catch (e) {
-    alert('Failed to delete device')
     error.value = 'Failed to delete device'
   }
 }
 
-
 const openEditDialog = (device) => {
-  deviceToEdit.value = device
+  deviceToEdit.value = { ...device } // Clone to avoid direct mutation
   isEditModalOpen.value = true
 }
 
-const handleDeviceSaved = (updatedDevice) => {
-  // Update local list
-  const idx = devices.value.findIndex(d => d.id === updatedDevice.id)
-  if (idx !== -1) {
-    devices.value[idx] = updatedDevice
-  }
+const handleDeviceSaved = async () => {
+  await fetchDevices()
   successMessage.value = 'Device updated successfully'
   setTimeout(() => successMessage.value = '', 3000)
 }
 
-const exportDevices = () => {
-  const dataStr = JSON.stringify(devices.value, null, 2)
-  const blob = new Blob([dataStr], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `devices-${new Date().toISOString().split('T')[0]}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+const exportDevices = async () => {
+  try {
+    const res = await axios.get('/api/v1/devices/export/json')
+    const dataStr = JSON.stringify(res.data, null, 2)
+    const blob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `devices-${new Date().toISOString().split('T')[0]}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    error.value = 'Export failed'
+  }
 }
 
 const handleImport = async (event) => {
@@ -430,10 +596,10 @@ const handleImport = async (event) => {
   try {
     const text = await file.text()
     const data = JSON.parse(text)
-    for (const device of data) {
-      await axios.put(`/api/v1/devices/${device.id}`, device)
-    }
+    await axios.post('/api/v1/devices/import/json', data)
     await fetchDevices()
+    successMessage.value = 'Devices imported successfully'
+    setTimeout(() => successMessage.value = '', 3000)
   } catch (e) {
     error.value = 'Import failed'
   }
@@ -443,7 +609,7 @@ let pollInterval = null
 
 onMounted(() => {
   fetchDevices()
-  pollInterval = setInterval(fetchDevices, 10000)
+  pollInterval = setInterval(fetchDevices, 30000) // Increase interval for paginated view
 })
 
 onUnmounted(() => {

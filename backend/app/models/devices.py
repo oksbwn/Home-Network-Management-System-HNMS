@@ -24,3 +24,11 @@ class DeviceUpdate(BaseModel):
     vendor: Optional[str] = None
     icon: Optional[str] = None
     attributes: Optional[dict] = None
+
+class PaginatedDevicesResponse(BaseModel):
+    items: list[DeviceRead]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+    global_stats: Optional[dict] = None
