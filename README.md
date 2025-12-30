@@ -4,7 +4,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](VERSION)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/docker-monolith-green.svg)](Dockerfile)
+[![Docker Hub](https://img.shields.io/badge/docker-wglabz/hnms-blue.svg?logo=docker)](https://hub.docker.com/r/wglabz/hnms)
 [![Vue](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)](ui/)
 [![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](backend/)
 
@@ -111,7 +111,19 @@ HNMS acts as a bridge between your network and your smart home.
 
 ---
 
-## 🚀 Quick Start (Docker)
+## � Docker Image
+
+The official HNMS Docker image is available on Docker Hub:
+
+```bash
+docker pull wglabz/hnms:latest
+```
+
+👉 **[View on Docker Hub](https://hub.docker.com/r/wglabz/hnms)**
+
+---
+
+## �🚀 Quick Start (Docker)
 
 > [!IMPORTANT]
 > For Linux deployments, use `network_mode: host` in `docker-compose.yml` to allow the scanner full access to the network interface.
