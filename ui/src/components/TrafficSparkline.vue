@@ -1,5 +1,6 @@
 <template>
-    <div class="absolute inset-0 pointer-events-none overflow-hidden">
+    <div class="absolute inset-0 overflow-hidden group" @mousemove="handleMouseMove" @mouseleave="handleMouseLeave"
+        ref="container">
         <svg :viewBox="`0 0 ${width} ${height}`" class="w-full h-full overflow-visible" preserveAspectRatio="none">
 
             <!-- Up Link (Tx) - Blue -->
@@ -10,12 +11,29 @@
             <path :d="downPath" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round"
                 stroke-linejoin="round" />
 
+            <!-- Hover Vertical Line -->
+            <line v-if="hoverIndex !== -1" :x1="hoverX" y1="0" :x2="hoverX" :y2="height" stroke="#64748b"
+                stroke-width="1" stroke-dasharray="2 2" class="opacity-50" />
         </svg>
+
+        <!-- Tooltip -->
+        <div v-if="hoverIndex !== -1"
+            class="absolute z-50 p-1.5 bg-slate-900/90 backdrop-blur text-white text-[9px] rounded shadow-lg pointer-events-none transition-opacity whitespace-nowrap border border-slate-700/50 flex flex-col gap-0.5"
+            :style="{ left: tooltipX + 'px', top: '50%', transform: 'translateY(-50%) ' + (tooltipX > width / 2 ? 'translateX(-105%)' : 'translateX(5%)') }">
+            <div class="flex items-center gap-1.5">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                <span class="font-mono">{{ formatBytes(tooltipData.down) }}</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                <span class="font-mono">{{ formatBytes(tooltipData.up) }}</span>
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
     data: {
@@ -31,6 +49,56 @@ const props = defineProps({
         default: 40
     }
 })
+
+const container = ref(null)
+const hoverIndex = ref(-1)
+const hoverX = ref(0)
+const tooltipX = ref(0)
+
+const tooltipData = computed(() => {
+    if (hoverIndex.value === -1 || !props.data[hoverIndex.value]) return { down: 0, up: 0 }
+    return props.data[hoverIndex.value]
+})
+
+const handleMouseMove = (e) => {
+    if (!props.data || props.data.length < 2 || !container.value) return
+
+    const rect = container.value.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const w = rect.width
+
+    // Find closest index
+    const count = props.data.length
+    const idx = Math.min(Math.max(Math.round((x / w) * (count - 1)), 0), count - 1)
+
+    hoverIndex.value = idx
+
+    // Map index back to X coordinate for the line
+    // The path uses points relative to props.width, but we are viewing in a container that scales content?
+    // The SVG has viewBox="0 0 width height".
+    // If the SVG scales to fit the container, then x/w ratio aligns with internal coordinate system.
+
+    // Internal X coordinate
+    const internalX = (idx / (count - 1)) * props.width
+    hoverX.value = internalX
+
+    // Tooltip position (visual pixels relative to container)
+    // We can use the mouse X or the snapped X. Snapped X is better.
+    tooltipX.value = (internalX / props.width) * w
+}
+
+const handleMouseLeave = () => {
+    hoverIndex.value = -1
+}
+
+const formatBytes = (bytes, decimals = 1) => {
+    if (!+bytes) return '0B'
+    const k = 1024
+    const dm = decimals < 0 ? 0 : decimals
+    const sizes = ['B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))}${sizes[i]}`
+}
 
 const processPoints = (key) => {
     if (!props.data || props.data.length < 2) return ''

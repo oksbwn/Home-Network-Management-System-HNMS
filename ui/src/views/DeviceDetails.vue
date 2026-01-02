@@ -270,7 +270,7 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+            <div class="grid grid-cols-1 gap-2 pr-2">
               <div v-for="h in history" :key="h.id"
                 class="flex items-center justify-between p-2 rounded-lg bg-white/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50 hover:border-blue-500/30 hover:shadow-sm hover:shadow-blue-500/5 transition-all group/item">
                 <div class="flex items-center gap-2.5">
@@ -456,7 +456,7 @@ const form = reactive({ display_name: '', name: '', device_type: '', icon: '', i
 const isScanning = ref(false)
 const history = ref([])
 const historyPage = ref(1)
-const historyLimit = ref(10)
+const historyLimit = ref(5)
 const historyTotal = ref(0)
 const fidelityHistory = ref([])
 const { notifySuccess, notifyError } = useNotifications()

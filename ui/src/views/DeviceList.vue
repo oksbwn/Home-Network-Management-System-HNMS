@@ -182,7 +182,7 @@
           <thead class="bg-slate-50 dark:bg-slate-900/50">
             <tr>
               <th v-for="header in tableHeaders" :key="header.key" @click="toggleSort(header.key)"
-                :class="[header.class, 'px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors']">
+                :class="[header.class, 'px-3 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-900 dark:hover:text-white transition-colors']">
                 <div class="flex items-center gap-1">
                   {{ header.label }}
                   <component :is="getSortIcon(header.key)" class="h-3 w-3"
@@ -190,7 +190,7 @@
                 </div>
               </th>
               <th
-                class="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                class="px-3 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Actions</th>
             </tr>
           </thead>
@@ -198,7 +198,7 @@
             <tr v-for="device in devices" :key="device.id"
               @click="$router.push({ name: 'DeviceDetails', params: { id: device.id } })"
               class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group">
-              <td class="px-6 py-4">
+              <td class="px-3 py-4">
                 <div class="flex items-center gap-3">
                   <div class="relative">
                     <div
@@ -228,18 +228,18 @@
                   </div>
                 </div>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-3 py-4">
                 <div class="text-xs text-slate-600 dark:text-slate-300 font-medium">{{ device.vendor || 'Unknown' }}
                 </div>
                 <div class="text-xs text-slate-500 font-mono truncate max-w-[200px]">{{ device.mac || 'N/A' }}</div>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-3 py-4">
                 <div class="h-8 w-24 relative" v-if="device.traffic_history && device.traffic_history.length > 1">
                   <TrafficSparkline :data="device.traffic_history" :width="100" :height="32" />
                 </div>
                 <span v-else class="text-[10px] text-slate-400 italic">No Activity</span>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-3 py-4">
                 <div v-if="device.open_ports && device.open_ports.length > 0" class="flex flex-wrap gap-1">
                   <span v-for="port in device.open_ports.slice(0, 3)" :key="typeof port === 'object' ? port.port : port"
                     class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 uppercase">
@@ -251,16 +251,16 @@
                 </div>
                 <span v-else class="text-xs text-slate-400 italic">No ports</span>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-3 py-4">
                 <span
                   class="inline-flex px-2 py-1 text-xs font-medium rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                   {{ device.device_type || 'Unknown' }}
                 </span>
               </td>
-              <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+              <td class="px-3 py-4 text-sm text-slate-600 dark:text-slate-400">
                 {{ formatRelativeTime(device.last_seen) }}
               </td>
-              <td class="px-6 py-4 text-right" @click.stop>
+              <td class="px-3 py-4 text-right" @click.stop>
                 <div class="flex items-center justify-end gap-1">
                   <router-link :to="{ name: 'DeviceDetails', params: { id: device.id } }"
                     class="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
