@@ -81,7 +81,9 @@ class MQTTManager:
             return
             
         config = self.get_config()
-        client_id = f"hnms_main"
+        # Use a unique client ID to avoid conflicts during restarts/reloads
+        import os
+        client_id = f"hnms_main_{os.getpid()}"
         self._client = get_mqtt_client(client_id)
         
         if config['username']:
@@ -197,8 +199,22 @@ class MQTTManager:
         interval = 60 if self.is_reachable else 30
         
         if now - self.last_test_time > interval:
-            logger.info("Performing periodic MQTT health check...")
-            self.test_connection()
+            if self._client and self._client.is_connected():
+                # Persistent client is fine, no need to reconnect/test
+                logger.debug("MQTT health check: Persistent client is connected.")
+                self.is_reachable = True
+                self._save_status("online")
+                self.last_test_time = now
+            else:
+                # Persistent client is down, try to reconnect or diagnose
+                logger.info("Performing periodic MQTT health check (persistent client disconnected)...")
+                
+                # Try to ensure persistent client is running
+                if not self._client or not self._client.is_connected():
+                     self._connect_persistent()
+
+                # Run diagnostic test if we suspect issues
+                self.test_connection()
 
     def publish(self, topic: str, payload: Any, retain: bool = False):
         if not self._client or not self._client.is_connected():
