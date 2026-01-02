@@ -615,7 +615,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, onUnmounted } from 'vue'
 import axios from 'axios'
 import * as LucideIcons from 'lucide-vue-next'
 import { Save, RotateCcw, Trash2, AlertTriangle, Loader2, Plus, Fingerprint, Pencil, Trash, X, Check, Search, ShieldCheck, Tag, Settings2, Layout, ChevronDown } from 'lucide-vue-next'
@@ -649,6 +649,7 @@ const loading = ref(false)
 const testLoading = ref(false)
 const mqttStatus = ref(null)
 const subnetError = ref('')
+let mqttPollTimer = null
 
 // Classification Rules State
 const rules = ref([])
@@ -1011,5 +1012,12 @@ onMounted(() => {
   fetchGist()
   fetchMqttStatus()
   fetchRules()
+
+  // Start polling MQTT status every 10 seconds
+  mqttPollTimer = setInterval(fetchMqttStatus, 10000)
+})
+
+onUnmounted(() => {
+  if (mqttPollTimer) clearInterval(mqttPollTimer)
 })
 </script>

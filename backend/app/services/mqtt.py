@@ -7,6 +7,12 @@ from app.core.config import get_settings
 from app.core.db import get_connection
 
 logger = logging.getLogger(__name__)
+# Add a dedicated file handler for MQTT debugging if not already present
+if not any(isinstance(h, logging.FileHandler) and h.baseFilename.endswith('mqtt_debug.log') for h in logger.handlers):
+    fh = logging.FileHandler('mqtt_debug.log')
+    fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    logger.addHandler(fh)
+    logger.setLevel(logging.INFO)
 
 # Paho MQTT 2.0 compatibility helper
 def get_mqtt_client(client_id: str):
@@ -26,7 +32,9 @@ class MQTTManager:
         self.last_error = None
         self.last_test_time = 0
         self.is_reachable = False
+        self._client = None
         self._load_status()
+        self._connect_persistent()
 
     @classmethod
     def get_instance(cls):
@@ -66,6 +74,44 @@ class MQTTManager:
             logger.error(f"Failed to save MQTT status: {e}")
         finally:
             conn.close()
+
+    def _connect_persistent(self):
+        """Connects the persistent client."""
+        if self._client and self._client.is_connected():
+            return
+            
+        config = self.get_config()
+        client_id = f"hnms_main"
+        self._client = get_mqtt_client(client_id)
+        
+        if config['username']:
+            self._client.username_pw_set(config['username'], config['password'])
+            
+        def on_connect(client, userdata, flags, rc):
+            if rc == 0:
+                self.is_reachable = True
+                self._save_status("online")
+                logger.info("MQTT Persistent Client connected.")
+            else:
+                self.is_reachable = False
+                self._save_status("offline", f"Connection failed with code {rc}")
+                logger.warning(f"MQTT Persistent Client failed to connect: {rc}")
+
+        def on_disconnect(client, userdata, rc):
+            self.is_reachable = False
+            logger.info(f"MQTT Persistent Client disconnected (rc={rc})")
+
+        self._client.on_connect = on_connect
+        self._client.on_disconnect = on_disconnect
+        
+        try:
+            # Set a timeout for the initial connection to prevent hanging the thread pool
+            self._client.connect(config['broker'], config['port'], keepalive=60)
+            self._client.loop_start()
+        except Exception as e:
+            logger.error(f"Failed to start MQTT persistent client: {e}")
+            self.is_reachable = False
+            self._save_status("offline", str(e))
 
     def get_config(self):
         settings = get_settings()
@@ -112,51 +158,67 @@ class MQTTManager:
         client.on_connect = on_connect
             
         try:
+            self.last_test_time = time.time()
+            logger.info(f"Connecting to MQTT broker at {config['broker']}:{config['port']}...")
             client.connect(config['broker'], config['port'], keepalive=5)
             client.loop_start()
             
             # Wait for connection or timeout (2 seconds)
             if connect_event.wait(timeout=2.0):
                 if result["success"]:
+                    logger.info("MQTT connection test successful.")
                     client.disconnect()
                     client.loop_stop()
                     if not custom_config:
                         self._save_status("online")
                     return True, "Connected successfully"
                 else:
+                    logger.warning(f"MQTT connection test failed: {result['error']}")
                     client.loop_stop()
                     if not custom_config:
                         self._save_status("offline", result["error"])
                     return False, result["error"]
             else:
+                logger.warning("MQTT connection test timed out.")
                 client.loop_stop()
                 if not custom_config:
                     self._save_status("offline", "Connection timeout")
                 return False, "Connection timeout"
         except Exception as e:
+            logger.error(f"MQTT connection test exception: {e}")
             if not custom_config:
                 self._save_status("offline", str(e))
             return False, str(e)
 
+    def check_health(self):
+        """Periodic health check for MQTT broker."""
+        now = time.time()
+        # Only check every 60 seconds unless we are offline
+        interval = 60 if self.is_reachable else 30
+        
+        if now - self.last_test_time > interval:
+            logger.info("Performing periodic MQTT health check...")
+            self.test_connection()
+
     def publish(self, topic: str, payload: Any, retain: bool = False):
+        if not self._client or not self._client.is_connected():
+            self._connect_persistent()
+            
         if not self.is_reachable:
             logger.debug(f"Skipping MQTT publish to {topic} because broker is offline/unreachable")
             return
             
-        config = self.get_config()
         try:
-            client_id = f"hnms_pub_{int(time.time())}"
-            client = get_mqtt_client(client_id)
-            if config['username']:
-                client.username_pw_set(config['username'], config['password'])
-            
-            client.connect(config['broker'], config['port'], 60)
             msg = payload if isinstance(payload, str) else json.dumps(payload)
-            client.publish(topic, msg, retain=retain)
-            client.disconnect()
+            logger.info(f"Publishing to {topic} (retain={retain})...")
+            # Quality of Service 1 ensures delivery, but we don't wait_for_publish
+            # to avoid blocking the caller's thread indefinitely
+            self._client.publish(topic, msg, retain=retain, qos=1)
+            logger.debug(f"Queued publish to {topic}")
         except Exception as e:
             logger.error(f"Failed to publish to {topic}: {e}")
-            self._save_status("offline", str(e))
+            # Don't mark offline immediately if it's just one publish failure,
+            # but if it's a connection issue, _client.is_connected() will catch it next time.
 
 def publish_mqtt(topic: str, payload: Any, retain: bool = False):
     MQTTManager.get_instance().publish(topic, payload, retain=retain)
@@ -173,8 +235,10 @@ def publish_ha_discovery(device_info: dict):
         "name": device_info.get("hostname") or f"Device {mac}",
         "unique_id": unique_id,
         "state_topic": f"{config['base_topic']}/devices/{unique_id}/status",
+        "json_attributes_topic": f"{config['base_topic']}/devices/{unique_id}/attributes",
         "payload_home": "online",
         "payload_not_home": "offline",
+        "icon": f"mdi:{device_info.get('icon', 'help-circle')}" if device_info.get('icon') else "mdi:lan-connect",
         "device": {
             "identifiers": [unique_id],
             "name": device_info.get("hostname") or f"Device {mac}",
@@ -203,9 +267,26 @@ def publish_device_status(device_info: dict, status: str):
     state_val = "online" if status == "online" else "offline"
     publish_mqtt(state_topic, state_val, retain=True)
     
-    # Optional: Publish attributes
+    # Publish attributes
     attr_topic = f"{base_topic}/devices/hnms_{key}/attributes"
-    publish_mqtt(attr_topic, device_info, retain=True)
+    # Filter out internal DB fields and format for HA
+    last_seen = device_info.get("last_seen")
+    if hasattr(last_seen, 'isoformat'):
+        last_seen_str = last_seen.isoformat()
+    else:
+        last_seen_str = str(last_seen or "")
+
+    ha_attributes = {
+        "ip_address": device_info.get("ip"),
+        "mac_address": device_info.get("mac"),
+        "name": device_info.get("hostname"),
+        "vendor": device_info.get("vendor"),
+        "type": device_info.get("device_type"),
+        "ip_type": device_info.get("ip_type"),
+        "last_seen": last_seen_str,
+        "scanner": "HNMS"
+    }
+    publish_mqtt(attr_topic, ha_attributes, retain=True)
     
     if status == "online":
         publish_ha_discovery(device_info)

@@ -10,9 +10,15 @@ logger = logging.getLogger(__name__)
 POLL_INTERVAL_SECONDS = 5
 
 async def scheduler_loop():
+    from app.services.mqtt import MQTTManager
     while True:
         try:
+            # 1. Handle background schedules
             await handle_schedules()
+            
+            # 2. Check MQTT Health
+            MQTTManager.get_instance().check_health()
+            
         except Exception as e:
             logger.error(f"Error in scheduler_loop: {e}")
         await asyncio.sleep(POLL_INTERVAL_SECONDS)

@@ -36,6 +36,7 @@ async def batch_upsert_devices(devices_data: List[Dict[str, Any]]) -> List[str]:
             now = datetime.now(timezone.utc)
             upserted_ids = []
             new_devices_to_enrich = [] # (id, mac)
+            online_notifications = [] # device_info dicts
             
             from app.services.classification import classify_device, get_vendor_locally
 
@@ -131,13 +132,26 @@ async def batch_upsert_devices(devices_data: List[Dict[str, Any]]) -> List[str]:
                 upserted_ids.append(device_id)
                 if mac:
                     new_devices_to_enrich.append((device_id, mac))
+                
+                # Always notify on discovery to ensure MQTT state (HA) stays fresh
+                dev_row = conn.execute("SELECT ip, mac, display_name, vendor, icon, device_type, ip_type, last_seen FROM devices WHERE id = ?", [device_id]).fetchone()
+                if dev_row:
+                    online_notifications.append({
+                        "ip": dev_row[0], "mac": dev_row[1], "hostname": dev_row[2], 
+                        "vendor": dev_row[3], "icon": dev_row[4], "device_type": dev_row[5],
+                        "ip_type": dev_row[6], "last_seen": dev_row[7]
+                    })
 
             conn.commit()
-            return upserted_ids, new_devices_to_enrich
+            return upserted_ids, new_devices_to_enrich, online_notifications
         finally:
             conn.close()
 
-    upserted_ids, to_enrich = await asyncio.to_thread(sync_batch_upsert)
+    upserted_ids, to_enrich, to_notify = await asyncio.to_thread(sync_batch_upsert)
+
+    # Trigger MQTT notifications
+    for dev_info in to_notify:
+        await asyncio.to_thread(publish_device_online, dev_info)
 
     # Background enrichment for each found device (async)
     for d_id, mac in to_enrich:
@@ -236,6 +250,22 @@ async def enrich_device(device_id: str, mac: str):
             finally:
                 conn.close()
         await asyncio.to_thread(sync_update)
+        
+        # Trigger MQTT update after enrichment
+        def sync_notify():
+            conn = get_connection()
+            try:
+                row = conn.execute("SELECT ip, mac, display_name, vendor, icon, device_type, ip_type, last_seen FROM devices WHERE id = ?", [device_id]).fetchone()
+                if row:
+                    dev_info = {
+                        "ip": row[0], "mac": row[1], "hostname": row[2], 
+                        "vendor": row[3], "icon": row[4], "device_type": row[5],
+                        "ip_type": row[6], "last_seen": row[7]
+                    }
+                    publish_device_online(dev_info)
+            finally:
+                conn.close()
+        await asyncio.to_thread(sync_notify)
 
 async def update_device_fields(device_id: str, fields: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     def sync_update():
@@ -265,9 +295,18 @@ async def update_device_fields(device_id: str, fields: Dict[str, Any]) -> Option
     updated = await asyncio.to_thread(sync_update)
     if not updated: return None
     
-    return {
-        "id": updated[0], "ip": updated[1], "mac": updated[2], "name": updated[3],
-        "display_name": updated[4], "device_type": updated[5], "vendor": updated[6],
-        "icon": updated[7], "status": updated[8], "ip_type": updated[9], "first_seen": updated[10], "last_seen": updated[11],
-        "is_trusted": updated[12]
-    }
+    if updated:
+        dev_info = {
+            "id": updated[0], "ip": updated[1], "mac": updated[2], "name": updated[3],
+            "display_name": updated[4], "device_type": updated[5], "vendor": updated[6],
+            "icon": updated[7], "status": updated[8], "ip_type": updated[9], "first_seen": updated[10], "last_seen": updated[11],
+            "is_trusted": updated[12]
+        }
+        # Trigger MQTT update on manual edit
+        await asyncio.to_thread(publish_device_online, {
+            "ip": dev_info["ip"], "mac": dev_info["mac"], "hostname": dev_info["display_name"],
+            "vendor": dev_info["vendor"], "icon": dev_info["icon"], "device_type": dev_info["device_type"],
+            "ip_type": dev_info["ip_type"], "last_seen": dev_info["last_seen"]
+        })
+        return dev_info
+    return None
