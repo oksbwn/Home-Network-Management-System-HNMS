@@ -190,96 +190,174 @@
                 </div>
               </th>
               <th
-                class="px-3 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                class="hidden md:table-cell px-3 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
-            <tr v-for="device in devices" :key="device.id"
-              @click="$router.push({ name: 'DeviceDetails', params: { id: device.id } })"
-              class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group">
-              <td class="px-3 py-4">
-                <div class="flex items-center gap-3">
-                  <div class="relative">
-                    <div
-                      class="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg group-hover:bg-white dark:group-hover:bg-slate-600 transition-colors">
-                      <component :is="getIcon(device.icon || 'help-circle')"
-                        class="h-5 w-5 text-slate-600 dark:text-slate-400" />
+            <template v-for="device in devices" :key="device.id">
+              <tr @click="$router.push({ name: 'DeviceDetails', params: { id: device.id } })"
+                class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group">
+                <td class="px-3 py-4">
+                  <div class="flex items-center gap-3">
+                    <button @click.stop="toggleRow(device.id)"
+                      class="md:hidden p-1 -ml-2 text-slate-400 hover:text-blue-500">
+                      <ChevronDown v-if="expandedRows.has(device.id)" class="h-4 w-4" />
+                      <ChevronRight v-else class="h-4 w-4" />
+                    </button>
+                    <div class="relative">
+                      <div
+                        class="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg group-hover:bg-white dark:group-hover:bg-slate-600 transition-colors">
+                        <component :is="getIcon(device.icon || 'help-circle')"
+                          class="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                      </div>
+                      <span
+                        class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-slate-800"
+                        :class="getDeviceStatusColor(device)"></span>
                     </div>
-                    <span
-                      class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-slate-800"
-                      :class="getDeviceStatusColor(device)"></span>
-                  </div>
-                  <div class="min-w-0">
-                    <div
-                      class="text-sm font-medium text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                      {{ device.display_name ||
-                        'Unnamed Device' }}</div>
-                    <div class="flex items-center gap-2">
-                      <div class="text-xs text-slate-500 font-mono">{{ device.ip }}</div>
-                      <span v-if="device.ip_type"
-                        class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border"
-                        :class="device.ip_type === 'static'
-                          ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800'
-                          : 'bg-amber-50 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 border-amber-100 dark:border-amber-800'">
-                        {{ device.ip_type }}
-                      </span>
+                    <div class="min-w-0">
+                      <div
+                        class="text-sm font-medium text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {{ device.display_name ||
+                          'Unnamed Device' }}</div>
+                      <div class="flex flex-wrap items-center gap-2">
+                        <div class="text-xs text-slate-500 font-mono">{{ device.ip }}</div>
+                        <span v-if="device.ip_type"
+                          class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border"
+                          :class="device.ip_type === 'static'
+                            ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800'
+                            : 'bg-amber-50 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 border-amber-100 dark:border-amber-800'">
+                          {{ device.ip_type }}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </td>
-              <td class="px-3 py-4">
-                <div class="text-xs text-slate-600 dark:text-slate-300 font-medium">{{ device.vendor || 'Unknown' }}
-                </div>
-                <div class="text-xs text-slate-500 font-mono truncate max-w-[200px]">{{ device.mac || 'N/A' }}</div>
-              </td>
-              <td class="px-3 py-4">
-                <div class="h-8 w-24 relative" v-if="device.traffic_history && device.traffic_history.length > 1">
-                  <TrafficSparkline :data="device.traffic_history" :width="100" :height="32" />
-                </div>
-                <span v-else class="text-[10px] text-slate-400 italic">No Activity</span>
-              </td>
-              <td class="px-3 py-4">
-                <div v-if="device.open_ports && device.open_ports.length > 0" class="flex flex-wrap gap-1">
-                  <span v-for="port in device.open_ports.slice(0, 3)" :key="typeof port === 'object' ? port.port : port"
-                    class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 uppercase">
-                    {{ typeof port === 'object' ? (port.service || port.port) : port }}
+                </td>
+                <td class="px-3 py-4 hidden md:table-cell">
+                  <div class="text-xs text-slate-600 dark:text-slate-300 font-medium">{{ device.vendor || 'Unknown' }}
+                  </div>
+                  <div class="text-xs text-slate-500 font-mono truncate max-w-[200px]">{{ device.mac || 'N/A' }}</div>
+                </td>
+                <td class="px-3 py-4 hidden md:table-cell">
+                  <div class="h-8 w-24 relative" v-if="device.traffic_history && device.traffic_history.length > 1">
+                    <TrafficSparkline :data="device.traffic_history" :width="100" :height="32" />
+                  </div>
+                  <span v-else class="text-[10px] text-slate-400 italic">No Activity</span>
+                </td>
+                <td class="px-3 py-4 hidden md:table-cell">
+                  <div v-if="device.open_ports && device.open_ports.length > 0" class="flex flex-wrap gap-1">
+                    <span v-for="port in device.open_ports.slice(0, 3)"
+                      :key="typeof port === 'object' ? port.port : port"
+                      class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 uppercase">
+                      {{ typeof port === 'object' ? (port.service || port.port) : port }}
+                    </span>
+                    <span v-if="device.open_ports.length > 3" class="text-[10px] text-slate-500 self-center">
+                      +{{ device.open_ports.length - 3 }}
+                    </span>
+                  </div>
+                  <span v-else class="text-xs text-slate-400 italic">No ports</span>
+                </td>
+                <td class="px-3 py-4 hidden md:table-cell">
+                  <span
+                    class="inline-flex px-2 py-1 text-xs font-medium rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                    {{ device.device_type || 'Unknown' }}
                   </span>
-                  <span v-if="device.open_ports.length > 3" class="text-[10px] text-slate-500 self-center">
-                    +{{ device.open_ports.length - 3 }}
-                  </span>
-                </div>
-                <span v-else class="text-xs text-slate-400 italic">No ports</span>
-              </td>
-              <td class="px-3 py-4">
-                <span
-                  class="inline-flex px-2 py-1 text-xs font-medium rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                  {{ device.device_type || 'Unknown' }}
-                </span>
-              </td>
-              <td class="px-3 py-4 text-sm text-slate-600 dark:text-slate-400">
-                {{ formatRelativeTime(device.last_seen) }}
-              </td>
-              <td class="px-3 py-4 text-right" @click.stop>
-                <div class="flex items-center justify-end gap-1">
-                  <router-link :to="{ name: 'DeviceDetails', params: { id: device.id } }"
-                    class="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
-                    v-tooltip="'View Device Details'">
-                    <Eye class="h-4 w-4" />
-                  </router-link>
-                  <button @click.stop="openEditDialog(device)"
-                    class="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                    v-tooltip="'Edit Device Name & Type'">
-                    <Pencil class="h-4 w-4" />
-                  </button>
-                  <button @click.stop="confirmDelete(device)"
-                    class="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                    v-tooltip="'Delete Device'">
-                    <Trash2 class="h-4 w-4" />
-                  </button>
-                </div>
-              </td>
-            </tr>
+                </td>
+                <td class="px-3 py-4 text-sm text-slate-600 dark:text-slate-400 hidden md:table-cell">
+                  {{ formatRelativeTime(device.last_seen) }}
+                </td>
+                <td class="px-3 py-4 text-right hidden md:table-cell" @click.stop>
+                  <div class="flex items-center justify-end gap-1">
+                    <router-link :to="{ name: 'DeviceDetails', params: { id: device.id } }"
+                      class="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
+                      v-tooltip="'View Device Details'">
+                      <Eye class="h-4 w-4" />
+                    </router-link>
+                    <button @click.stop="openEditDialog(device)"
+                      class="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                      v-tooltip="'Edit Device Name & Type'">
+                      <Pencil class="h-4 w-4" />
+                    </button>
+                    <button @click.stop="confirmDelete(device)"
+                      class="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                      v-tooltip="'Delete Device'">
+                      <Trash2 class="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Mobile Expanded Details -->
+              <tr v-if="expandedRows.has(device.id)" class="md:hidden bg-slate-50/50 dark:bg-slate-800/30">
+                <td colspan="2" class="px-4 py-3 border-t border-slate-100 dark:border-slate-700">
+                  <div class="space-y-4">
+                    <!-- Actions Row -->
+                    <div class="flex gap-2 mb-4">
+                      <router-link :to="{ name: 'DeviceDetails', params: { id: device.id } }"
+                        class="flex-1 flex items-center justify-center gap-2 p-2 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                        <Eye class="h-3.5 w-3.5" /> View
+                      </router-link>
+                      <button @click.stop="openEditDialog(device)"
+                        class="flex-1 flex items-center justify-center gap-2 p-2 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-lg text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+                        <Pencil class="h-3.5 w-3.5" /> Edit
+                      </button>
+                      <button @click.stop="confirmDelete(device)"
+                        class="flex-1 flex items-center justify-center gap-2 p-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 rounded-lg text-xs font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
+                        <Trash2 class="h-3.5 w-3.5" /> Delete
+                      </button>
+                    </div>
+
+                    <!-- Network Info -->
+                    <div class="grid grid-cols-2 gap-4">
+                      <div>
+                        <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Vendor</p>
+                        <p class="text-sm text-slate-700 dark:text-slate-300">{{ device.vendor || 'Unknown' }}</p>
+                      </div>
+                      <div>
+                        <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">MAC Address</p>
+                        <p class="text-sm font-mono text-slate-600 dark:text-slate-400">{{ device.mac || 'N/A' }}</p>
+                      </div>
+                    </div>
+
+                    <!-- Activity & Last Seen -->
+                    <div class="grid grid-cols-2 gap-4 items-end">
+                      <div>
+                        <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Activity</p>
+                        <div class="h-8 w-32 relative"
+                          v-if="device.traffic_history && device.traffic_history.length > 1">
+                          <TrafficSparkline :data="device.traffic_history" :width="128" :height="32" />
+                        </div>
+                        <span v-else class="text-xs text-slate-400 italic">No Activity</span>
+                      </div>
+                      <div>
+                        <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Last Seen</p>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">{{ formatRelativeTime(device.last_seen) }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <!-- Ports & Type -->
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Open Ports</p>
+                        <div v-if="device.open_ports && device.open_ports.length > 0" class="flex flex-wrap gap-1">
+                          <span v-for="port in device.open_ports" :key="typeof port === 'object' ? port.port : port"
+                            class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 uppercase">
+                            {{ typeof port === 'object' ? (port.service || port.port) : port }}
+                          </span>
+                        </div>
+                        <span v-else class="text-xs text-slate-400 italic">No open ports detected</span>
+                      </div>
+                      <div>
+                        <span
+                          class="inline-flex px-2 py-1 text-xs font-medium rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                          {{ device.device_type || 'Unknown' }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -341,7 +419,7 @@ import Sparkline from '@/components/Sparkline.vue'
 import TrafficSparkline from '@/components/TrafficSparkline.vue'
 import EditDeviceModal from '@/components/EditDeviceModal.vue'
 import * as LucideIcons from 'lucide-vue-next'
-const { Eye, Pencil, Trash2, Download, Upload, RefreshCw, Loader2, Search, ChevronUp, ChevronDown, ArrowUpDown, Activity, Wifi, Database, ZapOff, Ticket, Filter, Layers } = LucideIcons
+const { Eye, Pencil, Trash2, Download, Upload, RefreshCw, Loader2, Search, ChevronUp, ChevronDown, ChevronRight, ArrowUpDown, Activity, Wifi, Database, ZapOff, Ticket, Filter, Layers } = LucideIcons
 import { formatRelativeTime } from '@/utils/date'
 
 const devices = ref([])
@@ -353,6 +431,15 @@ const limit = ref(20)
 
 const isStatusOpen = ref(false)
 const isTypeOpen = ref(false)
+const expandedRows = ref(new Set())
+
+const toggleRow = (id) => {
+  if (expandedRows.value.has(id)) {
+    expandedRows.value.delete(id)
+  } else {
+    expandedRows.value.add(id)
+  }
+}
 
 // Custom directive for clicking outside dropdowns
 const vClickOutside = {
@@ -382,12 +469,12 @@ const deviceToEdit = ref(null)
 const successMessage = ref('')
 
 const tableHeaders = [
-  { key: 'display_name', label: 'Device', class: 'w-1/4' },
-  { key: 'mac', label: 'Network Info', class: 'w-1/5' },
-  { key: 'activity', label: 'Activity', class: 'w-1/6' },
-  { key: 'open_ports', label: 'Open Ports', class: 'w-1/6' },
-  { key: 'device_type', label: 'Type', class: 'w-1/12' },
-  { key: 'last_seen', label: 'Last Seen', class: 'w-1/12' },
+  { key: 'display_name', label: 'Device', class: 'md:w-1/4' },
+  { key: 'mac', label: 'Network Info', class: 'hidden md:table-cell w-1/5' },
+  { key: 'activity', label: 'Activity', class: 'hidden md:table-cell w-1/6' },
+  { key: 'open_ports', label: 'Open Ports', class: 'hidden md:table-cell w-1/6' },
+  { key: 'device_type', label: 'Type', class: 'hidden md:table-cell w-1/12' },
+  { key: 'last_seen', label: 'Last Seen', class: 'hidden md:table-cell w-1/12' },
 ]
 
 const deviceTypes = computed(() => {

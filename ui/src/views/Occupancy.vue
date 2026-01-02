@@ -1,5 +1,5 @@
 <template>
-    <div class="space-y-6">
+    <div class="space-y-6 overflow-hidden">
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -7,21 +7,24 @@
                 <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Network map for {{ selectedSubnet }}.0/24</p>
             </div>
             <div
-                class="relative flex items-center gap-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2.5 shadow-sm hover:border-blue-400/50 transition-colors group">
-                <Network class="w-5 h-5 text-slate-400 group-hover:text-blue-500 transition-colors" />
-                <div class="flex flex-col pr-2">
+                class="relative flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3 shadow-sm hover:border-blue-400/50 transition-colors group w-full sm:w-auto">
+                <div class="hidden sm:block">
+                    <Network class="w-5 h-5 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                </div>
+                <div class="flex flex-col w-full sm:w-auto">
                     <span
-                        class="text-[10px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 leading-none mb-1">Select
+                        class="text-[10px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 leading-none mb-2 sm:mb-1">Select
                         Network</span>
-                    <div class="relative flex items-center gap-2">
+                    <div class="relative flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full">
                         <!-- Filter Dropdown -->
-                        <div class="relative min-w-[140px]" v-click-outside="() => isFilterOpen = false">
+                        <div class="relative flex-1 md:flex-none md:min-w-[140px]"
+                            v-click-outside="() => isFilterOpen = false">
                             <button @click="isFilterOpen = !isFilterOpen"
                                 class="w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-blue-400/50 hover:shadow-sm transition-all focus:ring-2 focus:ring-blue-500/20 active:scale-[0.98]">
                                 <span class="truncate mr-2">
-                                    {{ filterStatus === 'all' ? 'All Status' : (filterStatus === 'online'
-                                        ? 'Online Only'
-                                        : (filterStatus === 'offline' ? 'Offline Only' : 'Available Only')) }}
+                                    {{ filterStatus === 'all' ? 'All' : (filterStatus === 'online'
+                                        ? 'Online'
+                                        : (filterStatus === 'offline' ? 'Offline' : 'Avail.')) }}
                                 </span>
                                 <ChevronDown class="w-4 h-4 text-slate-400 transition-transform duration-200"
                                     :class="{ 'rotate-180': isFilterOpen }" />
@@ -47,11 +50,12 @@
                         </div>
 
 
-                        <div class="relative min-w-[200px]" v-click-outside="() => isSubnetOpen = false">
+                        <div class="relative flex-1 md:flex-none md:min-w-[180px]"
+                            v-click-outside="() => isSubnetOpen = false">
                             <button @click="isSubnetOpen = !isSubnetOpen"
                                 class="w-full flex items-center justify-between px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-blue-400/50 hover:shadow-sm transition-all focus:ring-2 focus:ring-blue-500/20 active:scale-[0.98]">
                                 <span class="truncate mr-2">
-                                    {{ selectedSubnet ? `${selectedSubnet}.0/24` : 'Select Subnet' }}
+                                    {{ selectedSubnet ? `${selectedSubnet}.0/24` : 'Subnet' }}
                                 </span>
                                 <ChevronDown class="w-4 h-4 text-slate-400 transition-transform duration-200"
                                     :class="{ 'rotate-180': isSubnetOpen }" />
@@ -76,7 +80,7 @@
                             </transition>
                         </div>
                         <button @click="fetchOccupancy" :disabled="loading"
-                            class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
+                            class="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400 whitespace-nowrap flex-none"
                             v-tooltip="'Refresh Occupancy Data'">
                             <component :is="refreshIcon" class="w-5 h-5"
                                 :class="{ 'animate-spin': loading, 'text-emerald-500': showSuccess }" />
@@ -89,7 +93,7 @@
         <!-- Summary Stats -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div v-for="stat in summaryStats" :key="stat.label"
-                class="relative bg-white/70 dark:bg-slate-800/70 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700 p-4 hover:shadow-xl transition-all flex flex-col justify-between overflow-hidden group min-h-[100px]">
+                class="relative bg-white/70 dark:bg-slate-800/70 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700 p-4 hover:shadow-xl transition-all flex flex-col justify-between overflow-hidden group min-h-[100px] min-w-0">
 
                 <!-- Sparkline Background -->
                 <Sparkline :data="stat.trend" :color="stat.color" class="opacity-15" />
@@ -122,17 +126,17 @@
         </div>
 
         <!-- IP Grid -->
-        <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+        <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-2 md:p-6">
             <div class="space-y-6">
                 <div v-for="rowIndex in 8" :key="rowIndex">
                     <div class="flex items-center gap-3 mb-3">
                         <span class="text-xs font-medium text-slate-500 dark:text-slate-400">.{{ (rowIndex - 1) * 32 + 1
-                        }} - .{{ Math.min(rowIndex * 32, 254) }}</span>
+                            }} - .{{ Math.min(rowIndex * 32, 254) }}</span>
                         <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
                     </div>
-                    <div class="grid grid-cols-8 md:grid-cols-16 gap-2">
+                    <div class="grid grid-cols-4 min-[480px]:grid-cols-5 sm:grid-cols-8 md:grid-cols-16 gap-1 sm:gap-2">
                         <template v-for="i in 32" :key="i">
-                            <div v-if="((rowIndex - 1) * 32 + i) <= 254" class="relative group">
+                            <div v-if="((rowIndex - 1) * 32 + i) <= 254" class="relative group min-w-0">
                                 <div :class="['h-10 flex flex-col items-center justify-center text-[10px] font-mono leading-none rounded cursor-pointer transition-all gap-0.5 px-0.5', getStatusClass((rowIndex - 1) * 32 + i)]"
                                     @click="goToDevice((rowIndex - 1) * 32 + i)">
                                     <span class="opacity-40 text-[9px] font-bold">{{ (rowIndex - 1) * 32 + i }}</span>
@@ -160,7 +164,7 @@
                                         <div class="flex justify-between items-center">
                                             <span class="opacity-75">Last Seen:</span>
                                             <span>{{ formatRelativeTime(getDevice((rowIndex - 1) * 32 + i).last_seen)
-                                                }}</span>
+                                            }}</span>
                                         </div>
                                         <div class="flex justify-between items-center">
                                             <span class="opacity-75">Open Ports:</span>

@@ -72,13 +72,13 @@
                 class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Target</th>
               <th
-                class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Type</th>
               <th
-                class="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Started</th>
               <th
-                class="px-6 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                class="hidden md:table-cell px-6 py-3 text-center text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Devices</th>
               <th
                 class="px-6 py-3 text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -98,13 +98,14 @@
                   }}</div>
                   <div class="text-xs text-slate-500 font-mono">{{ scan.id.split('-')[0] }}...</div>
                 </td>
-                <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{{ scan.scan_type }}</td>
-                <td class="px-6 py-4">
+                <td class="hidden md:table-cell px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{{ scan.scan_type
+                  }}</td>
+                <td class="hidden md:table-cell px-6 py-4">
                   <div class="text-sm text-slate-600 dark:text-slate-400">{{ formatDate(scan.started_at ||
                     scan.created_at) }}</div>
                   <div v-if="scan.finished_at" class="text-xs text-slate-500">{{ getDuration(scan) }}</div>
                 </td>
-                <td class="px-6 py-4 text-center">
+                <td class="hidden md:table-cell px-6 py-4 text-center">
                   <span class="text-sm font-medium text-slate-900 dark:text-white">{{ resultsCount[scan.id] !==
                     undefined ? resultsCount[scan.id] : '...' }}</span>
                 </td>
@@ -126,6 +127,29 @@
               <!-- Expanded Area -->
               <tr v-if="expandedIds.has(scan.id)">
                 <td colspan="6" class="px-6 py-4 bg-slate-50 dark:bg-slate-900/20">
+                  <!-- Mobile Details Section -->
+                  <div
+                    class="md:hidden grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                    <div class="space-y-1">
+                      <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Type</p>
+                      <p class="text-sm text-slate-700 dark:text-slate-300">{{ scan.scan_type }}</p>
+                    </div>
+                    <div class="space-y-1">
+                      <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Devices Found</p>
+                      <p class="text-sm font-medium text-slate-900 dark:text-white">{{ resultsCount[scan.id] !==
+                        undefined ? resultsCount[scan.id] : '...' }}</p>
+                    </div>
+                    <div class="space-y-1">
+                      <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Started</p>
+                      <p class="text-sm text-slate-600 dark:text-slate-400">{{ formatDate(scan.started_at ||
+                        scan.created_at) }}</p>
+                    </div>
+                    <div class="space-y-1">
+                      <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Duration</p>
+                      <p class="text-sm text-slate-500">{{ getDuration(scan) || '-' }}</p>
+                    </div>
+                  </div>
+
                   <div v-if="loadingResults[scan.id]" class="flex items-center justify-center py-8 text-slate-500">
                     <div class="w-5 h-5 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin mr-3">
                     </div>
@@ -149,6 +173,7 @@
                     <div class="text-sm text-slate-500">No devices found</div>
                   </div>
                 </td>
+
               </tr>
             </template>
           </tbody>

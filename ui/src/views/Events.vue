@@ -90,60 +90,102 @@
             <tr
               class="text-slate-500 font-bold uppercase text-[10px] tracking-[0.15em] border-b border-slate-100 dark:border-slate-700/50">
               <th class="px-8 py-4">Device</th>
-              <th class="px-6 py-4">Status</th>
-              <th class="px-6 py-4">Activity</th>
-              <th class="px-6 py-4">Time</th>
+              <th class="hidden md:table-cell px-6 py-4">Status</th>
+              <th class="hidden md:table-cell px-6 py-4">Activity</th>
+              <th class="hidden md:table-cell px-6 py-4">Time</th>
               <th class="px-8 py-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 dark:divide-slate-700/30">
-            <tr v-for="event in events" :key="event.id"
-              class="hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-all group">
-              <td class="px-8 py-4">
-                <div class="flex items-center gap-4">
-                  <div
-                    class="p-2.5 bg-slate-100 dark:bg-slate-900 rounded-xl group-hover:bg-white dark:group-hover:bg-slate-800 transition-colors shadow-sm">
-                    <component :is="getIcon(event.icon, event.device_type)"
-                      class="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                  </div>
-                  <div>
-                    <div class="font-bold text-slate-900 dark:text-white leading-tight mb-0.5">{{ event.display_name }}
+            <template v-for="event in events" :key="event.id">
+              <tr class="hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-all group">
+                <td class="px-8 py-4">
+                  <div class="flex items-center gap-4">
+                    <div
+                      class="p-2.5 bg-slate-100 dark:bg-slate-900 rounded-xl group-hover:bg-white dark:group-hover:bg-slate-800 transition-colors shadow-sm">
+                      <component :is="getIcon(event.icon, event.device_type)"
+                        class="h-5 w-5 text-slate-600 dark:text-slate-400" />
                     </div>
-                    <div class="text-[10px] text-slate-500 font-mono tracking-wider">{{ event.ip }}</div>
+                    <div>
+                      <div class="font-bold text-slate-900 dark:text-white leading-tight mb-0.5">{{ event.display_name
+                      }}
+                      </div>
+                      <div class="text-[10px] text-slate-500 font-mono tracking-wider">{{ event.ip }}</div>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td class="px-6 py-4">
-                <span v-if="event.status === 'online'"
-                  class="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
-                  ONLINE
-                </span>
-                <span v-else
-                  class="inline-flex items-center px-2.5 py-1 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 text-[10px] font-black uppercase tracking-widest border border-red-500/20">
-                  OFFLINE
-                </span>
-              </td>
-              <td class="px-6 py-4">
-                <p class="text-xs text-slate-600 dark:text-slate-400">
-                  {{ event.status === 'online' ? 'Device joined the network' : 'Device disconnected from network' }}
-                </p>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-xs text-slate-900 dark:text-slate-200 font-medium">
-                  {{ formatRelativeTime(event.changed_at) }}
-                </div>
-                <div class="text-[9px] text-slate-400 tracking-tight">
-                  {{ formatDate(event.changed_at) }}
-                </div>
-              </td>
-              <td class="px-8 py-4 text-right">
-                <button @click="showDeviceDetail(event)"
-                  class="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-100/50 dark:hover:bg-blue-900/30 rounded-xl transition-all"
-                  v-tooltip="'View Details'">
-                  <ArrowRightCircleIcon class="h-5 w-5" />
-                </button>
-              </td>
-            </tr>
+                </td>
+                <td class="hidden md:table-cell px-6 py-4">
+                  <span v-if="event.status === 'online'"
+                    class="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
+                    ONLINE
+                  </span>
+                  <span v-else
+                    class="inline-flex items-center px-2.5 py-1 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 text-[10px] font-black uppercase tracking-widest border border-red-500/20">
+                    OFFLINE
+                  </span>
+                </td>
+                <td class="hidden md:table-cell px-6 py-4">
+                  <p class="text-xs text-slate-600 dark:text-slate-400">
+                    {{ event.status === 'online' ? 'Device joined the network' : 'Device disconnected from network' }}
+                  </p>
+                </td>
+                <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap">
+                  <div class="text-xs text-slate-900 dark:text-slate-200 font-medium">
+                    {{ formatRelativeTime(event.changed_at) }}
+                  </div>
+                  <div class="text-[9px] text-slate-400 tracking-tight">
+                    {{ formatDate(event.changed_at) }}
+                  </div>
+                </td>
+                <td class="px-8 py-4 text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <button @click="toggleById(event.id)"
+                      class="md:hidden p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all"
+                      v-tooltip="expandedRowIds.has(event.id) ? 'Collapse' : 'Expand'">
+                      <component :is="expandedRowIds.has(event.id) ? ChevronUpIcon : ChevronDownIcon" class="h-5 w-5" />
+                    </button>
+                    <button @click="showDeviceDetail(event)"
+                      class="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-100/50 dark:hover:bg-blue-900/30 rounded-xl transition-all"
+                      v-tooltip="'View Details'">
+                      <ArrowRightCircleIcon class="h-5 w-5" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Mobile Expanded Row -->
+              <tr v-if="expandedRowIds.has(event.id)" class="md:hidden bg-slate-50/50 dark:bg-slate-900/10">
+                <td colspan="5" class="px-8 py-4 border-t border-slate-100 dark:border-slate-800">
+                  <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                      <span v-if="event.status === 'online'"
+                        class="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
+                        ONLINE
+                      </span>
+                      <span v-else
+                        class="inline-flex items-center px-2.5 py-1 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 text-[10px] font-black uppercase tracking-widest border border-red-500/20">
+                        OFFLINE
+                      </span>
+                      <div class="text-right">
+                        <div class="text-xs text-slate-900 dark:text-slate-200 font-medium">
+                          {{ formatRelativeTime(event.changed_at) }}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Activity</p>
+                      <p class="text-xs text-slate-600 dark:text-slate-400">
+                        {{ event.status === 'online' ? 'Device joined the network' : 'Device disconnected from network'
+                        }}
+                      </p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Timestamp</p>
+                      <p class="text-xs text-slate-500 font-mono">{{ formatDate(event.changed_at) }}</p>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </template>
             <tr v-if="events.length === 0 && !loading">
               <td colspan="5" class="px-8 py-20 text-center">
                 <div class="flex flex-col items-center gap-2 text-slate-400">
@@ -322,6 +364,8 @@ import {
   Loader2 as Loader2Icon,
   ZapOff as ZapOffIcon,
   Inbox as InboxIcon,
+  ChevronDown as ChevronDownIcon,
+  ChevronUp as ChevronUpIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   Laptop as LaptopIcon,
@@ -353,6 +397,7 @@ import {
 
 // State
 const events = ref([])
+const expandedRowIds = ref(new Set())
 const stats = ref([])
 const loading = ref(false)
 const loadingStats = ref(false)
@@ -479,6 +524,11 @@ const fetchStats = async () => {
   } finally {
     loadingStats.value = false
   }
+}
+
+const toggleById = (id) => {
+  if (expandedRowIds.value.has(id)) expandedRowIds.value.delete(id)
+  else expandedRowIds.value.add(id)
 }
 
 const showDeviceDetail = async (device) => {
