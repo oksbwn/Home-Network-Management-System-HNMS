@@ -103,7 +103,7 @@
                   <div class="flex items-center gap-4">
                     <div
                       class="p-2.5 bg-slate-100 dark:bg-slate-900 rounded-xl group-hover:bg-white dark:group-hover:bg-slate-800 transition-colors shadow-sm">
-                      <component :is="getIcon(event.icon, event.device_type)"
+                      <component :is="getIcon(event.icon || event.device_type)"
                         class="h-5 w-5 text-slate-600 dark:text-slate-400" />
                     </div>
                     <div>
@@ -244,7 +244,7 @@
                 <div class="relative">
                   <div
                     class="p-5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[1.5rem] shadow-xl shadow-blue-500/20 text-white">
-                    <component :is="getIcon(selectedDevice.icon, selectedDevice.device_type)" class="h-8 w-8" />
+                    <component :is="getIcon(selectedDevice.icon || selectedDevice.device_type)" class="h-8 w-8" />
                   </div>
                   <div :class="selectedDevice.status === 'online' ? 'bg-emerald-500' : 'bg-red-500'"
                     class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-white dark:border-slate-900 shadow-sm">
@@ -368,32 +368,16 @@ import {
   ChevronUp as ChevronUpIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
-  Laptop as LaptopIcon,
-  Smartphone as SmartphoneIcon,
-  Server as ServerIcon,
-  Globe as GlobeIcon,
-  Cpu as CpuIcon,
-  Tv as TvIcon,
+  Calendar as CalendarIcon,
+  Clock as ClockIcon,
+  Eye as EyeIcon,
   Wifi as WifiIcon,
-  WifiOff as WifiOffIcon,
-  Tablet as TabletIcon,
-  Monitor as MonitorIcon,
-  Router as RouterIcon,
-  Network as NetworkIcon,
-  Layers as LayersIcon,
-  Rss as RssIcon,
-  Printer as PrinterIcon,
-  HardDrive as HardDriveIcon,
-  Gamepad2 as Gamepad2Icon,
-  HelpCircle as HelpCircleIcon,
-  Lightbulb as LightbulbIcon,
-  Plug as PlugIcon,
-  Microchip as MicrochipIcon,
-  Camera as CameraIcon,
-  Waves as WavesIcon,
-  Speaker as SpeakerIcon,
-  Play as PlayIcon
+  WifiOff as WifiOffIcon
 } from 'lucide-vue-next'
+import { getIcon } from '@/utils/icons'
+import { useNotifications } from '@/composables/useNotifications'
+
+const { notifyError } = useNotifications()
 
 // State
 const events = ref([])
@@ -434,36 +418,7 @@ const visiblePages = computed(() => {
   return pages
 })
 
-const iconMap = {
-  smartphone: SmartphoneIcon, tablet: TabletIcon, laptop: LaptopIcon, monitor: MonitorIcon, server: ServerIcon,
-  router: RouterIcon, network: NetworkIcon, layers: LayersIcon, rss: RssIcon, tv: TvIcon, speaker: SpeakerIcon,
-  play: PlayIcon, cpu: CpuIcon, lightbulb: LightbulbIcon, plug: PlugIcon, microchip: MicrochipIcon,
-  camera: CameraIcon, waves: WavesIcon, printer: PrinterIcon, 'hard-drive': HardDriveIcon,
-  'gamepad-2': Gamepad2Icon, 'help-circle': HelpCircleIcon, 'globe': GlobeIcon
-}
-
-const getIcon = (iconName, deviceType) => {
-  // Priority 1: Specifically set icon
-  if (iconName && iconMap[iconName.toLowerCase()]) {
-    return iconMap[iconName.toLowerCase()]
-  }
-
-  // Priority 2: Inferred icon from type
-  const typeKey = deviceType?.toLowerCase()
-  if (typeKey) {
-    if (typeKey.includes('mobile') || typeKey.includes('phone')) return SmartphoneIcon
-    if (typeKey.includes('laptop')) return LaptopIcon
-    if (typeKey.includes('desktop') || typeKey.includes('monitor')) return MonitorIcon
-    if (typeKey.includes('server')) return ServerIcon
-    if (typeKey.includes('router') || typeKey.includes('gateway')) return RouterIcon
-    if (typeKey.includes('iot') || typeKey.includes('cpu')) return CpuIcon
-    if (typeKey.includes('tv') || typeKey.includes('television')) return TvIcon
-    if (typeKey.includes('printer')) return PrinterIcon
-  }
-
-  // Fallback
-  return HelpCircleIcon
-}
+// getIcon is now imported from @/utils/icons
 
 // Data Fetching
 const fetchCount = async () => {
@@ -488,11 +443,13 @@ const fetchData = async () => {
     const response = await axios.get('/api/v1/events/', { params })
     events.value = response.data
 
-    // Approximate Online Now
-    const devRes = await axios.get('/api/v1/devices/')
-    onlineNowCount.value = devRes.data.filter(d => d.status === 'online').length
+    // Fix: Accurate Online Now Count (fetch all items from paginated response)
+    const devRes = await axios.get('/api/v1/devices/', { params: { limit: -1 } })
+    const allDevices = devRes.data.items || []
+    onlineNowCount.value = allDevices.filter(d => d.status === 'online').length
   } catch (err) {
     console.error('Failed to fetch events', err)
+    notifyError('Failed to refresh event log')
   } finally {
     loading.value = false
   }

@@ -759,7 +759,6 @@ const fetchSettings = async () => {
     // Fetch OpenWRT specific config
     try {
       const owRes = await axios.get('/api/v1/integrations/openwrt/config')
-      console.log("DEBUG: OpenWRT Config Response:", owRes.data)
       if (owRes.data) {
         settings.openwrt_url = owRes.data.url
         settings.openwrt_username = owRes.data.username

@@ -31,26 +31,7 @@
       </div>
     </div>
 
-    <!-- Error Alert -->
-    <div v-if="error"
-      class="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-900/30 text-sm flex items-center gap-3">
-      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="8" x2="12" y2="12" />
-        <line x1="12" y1="16" x2="12.01" y2="16" />
-      </svg>
-      <span>{{ error }}</span>
-    </div>
 
-    <!-- Success Alert -->
-    <div v-if="successMessage"
-      class="p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-900/30 text-sm flex items-center gap-3">
-      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-        <polyline points="22 4 12 14.01 9 11.01" />
-      </svg>
-      <span>{{ successMessage }}</span>
-    </div>
 
     <!-- Quick Stats -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -436,6 +417,7 @@ import { getIcon } from '@/utils/icons'
 import * as LucideIcons from 'lucide-vue-next'
 const { Eye, Pencil, Trash2, Download, Upload, RefreshCw, Loader2, Search, ChevronUp, ChevronDown, ChevronRight, ArrowUpDown, Activity, Wifi, Database, ZapOff, Ticket, Filter, Layers, ShieldCheck, ShieldAlert } = LucideIcons
 import { formatRelativeTime } from '@/utils/date'
+import { useNotifications } from '@/composables/useNotifications'
 
 const devices = ref([])
 const totalDevices = ref(0)
@@ -477,11 +459,11 @@ const typeFilter = ref('')
 const sortBy = ref('ip')
 const sortOrder = ref('asc')
 
-const error = ref('')
 const isScanning = ref(false)
 const isEditModalOpen = ref(false)
 const deviceToEdit = ref(null)
-const successMessage = ref('')
+
+const { notifySuccess, notifyError } = useNotifications()
 
 const tableHeaders = [
   { key: 'display_name', label: 'Device', class: 'md:w-1/4' },
@@ -591,7 +573,7 @@ const fetchDevices = async () => {
       globalStats.value = res.data.global_stats
     }
   } catch (e) {
-    error.value = 'Failed to load devices'
+    notifyError('Failed to load devices')
     console.error(e)
   }
 }
@@ -612,7 +594,7 @@ const triggerScan = async () => {
     await new Promise(resolve => setTimeout(resolve, 2000))
     await fetchDevices()
   } catch (e) {
-    error.value = 'Scan failed'
+    notifyError('Scan failed')
   } finally {
     isScanning.value = false
   }
@@ -622,10 +604,9 @@ const approveDevice = async (device) => {
   try {
     await axios.patch(`/api/v1/devices/${device.id}`, { is_trusted: true })
     await fetchDevices()
-    successMessage.value = 'Device approved successfully'
-    setTimeout(() => successMessage.value = '', 3000)
+    notifySuccess('Device approved successfully')
   } catch (e) {
-    error.value = 'Failed to approve device'
+    notifyError('Failed to approve device')
   }
 }
 
@@ -638,9 +619,10 @@ const deleteDevice = async () => {
   try {
     await axios.delete(`/api/v1/devices/${deviceToDelete.value.id}`)
     await fetchDevices()
+    notifySuccess('Device deleted successfully')
     deviceToDelete.value = null
   } catch (e) {
-    error.value = 'Failed to delete device'
+    notifyError('Failed to delete device')
   }
 }
 
@@ -651,8 +633,6 @@ const openEditDialog = (device) => {
 
 const handleDeviceSaved = async () => {
   await fetchDevices()
-  successMessage.value = 'Device updated successfully'
-  setTimeout(() => successMessage.value = '', 3000)
 }
 
 const exportDevices = async () => {
@@ -667,7 +647,7 @@ const exportDevices = async () => {
     a.click()
     URL.revokeObjectURL(url)
   } catch (e) {
-    error.value = 'Export failed'
+    notifyError('Export failed')
   }
 }
 
@@ -679,10 +659,9 @@ const handleImport = async (event) => {
     const data = JSON.parse(text)
     await axios.post('/api/v1/devices/import/json', data)
     await fetchDevices()
-    successMessage.value = 'Devices imported successfully'
-    setTimeout(() => successMessage.value = '', 3000)
+    notifySuccess('Devices imported successfully')
   } catch (e) {
-    error.value = 'Import failed'
+    notifyError('Import failed')
   }
 }
 

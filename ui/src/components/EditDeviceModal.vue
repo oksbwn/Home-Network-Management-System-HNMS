@@ -165,7 +165,7 @@
                                                         <component :is="getIcon(d.icon)"
                                                             class="w-4 h-4 mr-2 opacity-70" />
                                                         <span class="truncate">{{ d.display_name || d.name || d.ip
-                                                        }}</span>
+                                                            }}</span>
                                                     </button>
                                                 </div>
                                             </PopoverPanel>
@@ -213,6 +213,7 @@ import {
 } from 'lucide-vue-next'
 import axios from 'axios'
 import { getIcon } from '@/utils/icons'
+import { useNotifications } from '@/composables/useNotifications'
 import { deviceTypes, availableIcons, typeToIconMap } from '@/constants/devices'
 
 const props = defineProps({
@@ -225,6 +226,8 @@ const emit = defineEmits(['close', 'save'])
 const isSaving = ref(false)
 const allDevices = ref([])
 const parentSearch = ref('')
+
+const { notifySuccess, notifyError } = useNotifications()
 
 const form = ref({
     display_name: '',
@@ -298,11 +301,12 @@ const saveDevice = async () => {
     isSaving.value = true
     try {
         const response = await axios.patch(`/api/v1/devices/${props.device.id}`, form.value)
+        notifySuccess('Device updated successfully')
         emit('save', response.data)
         closeModal()
     } catch (error) {
         console.error('Failed to update device', error)
-        // Could add toast error here
+        notifyError('Failed to update device')
     } finally {
         isSaving.value = false
     }
