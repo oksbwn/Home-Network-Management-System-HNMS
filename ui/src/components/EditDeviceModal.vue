@@ -12,7 +12,7 @@
                         enter-to="opacity-100 scale-100" leave="duration-200 ease-in" leave-from="opacity-100 scale-100"
                         leave-to="opacity-0 scale-95">
                         <DialogPanel
-                            class="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all border border-slate-200 dark:border-slate-700">
+                            class="w-full max-w-md transform rounded-2xl bg-white dark:bg-slate-800 p-6 text-left align-middle shadow-xl transition-all border border-slate-200 dark:border-slate-700">
                             <DialogTitle as="h3"
                                 class="text-lg font-medium leading-6 text-slate-900 dark:text-white mb-4">
                                 Edit Device Details
@@ -37,13 +37,50 @@
 
                                 <!-- Device Type -->
                                 <div>
-                                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Device
-                                        Type</label>
-                                    <select v-model="form.device_type"
-                                        class="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                        <option v-for="type in deviceTypes" :key="type" :value="type">{{ type }}
-                                        </option>
-                                    </select>
+                                    <label
+                                        class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Device
+                                        Category</label>
+                                    <Popover class="relative" v-slot="{ open, close }">
+                                        <PopoverButton
+                                            class="w-full flex items-center justify-between px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all group">
+                                            <span class="truncate">{{ form.device_type || 'Select Category' }}</span>
+                                            <LucideIcons.ChevronDown
+                                                class="h-4 w-4 text-slate-400 transition-transform duration-200"
+                                                :class="{ 'rotate-180': open }" />
+                                        </PopoverButton>
+
+                                        <transition enter-active-class="transition duration-200 ease-out"
+                                            enter-from-class="translate-y-1 opacity-0"
+                                            enter-to-class="translate-y-0 opacity-100"
+                                            leave-active-class="transition duration-150 ease-in"
+                                            leave-from-class="translate-y-0 opacity-100"
+                                            leave-to-class="translate-y-1 opacity-0">
+                                            <PopoverPanel
+                                                class="absolute z-50 mt-2 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden focus:outline-none">
+                                                <div class="p-2 border-b border-slate-100 dark:border-slate-700/50">
+                                                    <div
+                                                        class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-900/50 rounded-lg">
+                                                        <LucideIcons.Search class="w-3.5 h-3.5 text-slate-400" />
+                                                        <input v-model="categorySearch" type="text"
+                                                            placeholder="Search..."
+                                                            class="bg-transparent border-none outline-none text-xs text-slate-700 dark:text-slate-200 w-full placeholder:text-slate-400" />
+                                                    </div>
+                                                </div>
+                                                <div class="max-h-48 overflow-y-auto custom-scrollbar p-1">
+                                                    <button v-for="type in filteredDeviceTypes" :key="type"
+                                                        type="button" @click="form.device_type = type; close()"
+                                                        class="w-full flex items-center px-4 py-2 text-sm text-left rounded-lg hover:bg-blue-600 hover:text-white transition-colors"
+                                                        :class="form.device_type === type ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
+                                                        {{ type }}
+                                                    </button>
+                                                    <div v-if="filteredDeviceTypes.length === 0"
+                                                        class="px-4 py-2 text-xs text-slate-400 text-center">
+                                                        No matches
+                                                    </div>
+                                                </div>
+                                            </PopoverPanel>
+                                        </transition>
+                                    </Popover>
                                 </div>
 
                                 <!-- Icon Picker Popover -->
@@ -120,6 +157,7 @@ import {
 } from '@headlessui/vue'
 import * as LucideIcons from 'lucide-vue-next'
 import axios from 'axios'
+import { deviceTypes, availableIcons, typeToIconMap } from '@/constants/devices'
 
 const props = defineProps({
     isOpen: Boolean,
@@ -136,52 +174,14 @@ const form = ref({
     icon: ''
 })
 
-const deviceTypes = [
-    'Desktop', 'Laptop', 'Mobile', 'Tablet', 'Server', 'Printer', 'Monitor',
-    'Router', 'Switch', 'Access Point', 'Gateway', 'Firewall', 'NAS',
-    'Smart Plug', 'Smart Bulb', 'Smart Switch', 'Thermostat', 'Camera', 'Door Lock', 'Sensor',
-    'TV', 'Speaker', 'Game Console', 'Media Player', 'Wearable', 'Vehicle',
-    'IoT (Generic)', 'Unknown'
-]
+icon: ''
+})
 
-const availableIcons = [
-    'Monitor', 'Laptop', 'Smartphone', 'Tablet', 'Server', 'Printer',
-    'Wifi', 'Network', 'Globe', 'ShieldCheck', 'Database',
-    'Zap', 'Lightbulb', 'Sliders', 'Home', 'Video', 'Lock', 'Eye',
-    'Tv', 'Speaker', 'Gamepad2', 'Film', 'Watch', 'Truck',
-    'Cpu', 'HelpCircle'
-]
+const categorySearch = ref('')
 
-const typeToIconMap = {
-    'Desktop': 'Monitor',
-    'Laptop': 'Laptop',
-    'Mobile': 'Smartphone',
-    'Tablet': 'Tablet',
-    'Server': 'Server',
-    'Printer': 'Printer',
-    'Monitor': 'Monitor',
-    'Router': 'Wifi',
-    'Access Point': 'Wifi',
-    'Gateway': 'Globe',
-    'Switch': 'Network',
-    'Firewall': 'ShieldCheck',
-    'NAS': 'Database',
-    'Smart Plug': 'Zap',
-    'Smart Bulb': 'Lightbulb',
-    'Smart Switch': 'Sliders',
-    'Thermostat': 'Home',
-    'Camera': 'Video',
-    'Door Lock': 'Lock',
-    'Sensor': 'Eye',
-    'TV': 'Tv',
-    'Speaker': 'Speaker',
-    'Game Console': 'Gamepad2',
-    'Media Player': 'Film',
-    'Wearable': 'Watch',
-    'Vehicle': 'Truck',
-    'IoT (Generic)': 'Cpu',
-    'Unknown': 'HelpCircle'
-}
+if (!categorySearch.value) return deviceTypes
+return deviceTypes.filter(t => t.toLowerCase().includes(categorySearch.value.toLowerCase()))
+})
 
 watch(() => form.value.device_type, (newType) => {
     if (newType && typeToIconMap[newType]) {

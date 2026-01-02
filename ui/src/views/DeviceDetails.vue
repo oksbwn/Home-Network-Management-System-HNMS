@@ -202,7 +202,11 @@
           </div>
 
           <div
-            class="mt-8 pt-8 border-t border-slate-100 dark:border-slate-700/50 grid grid-cols-2 md:grid-cols-4 gap-6">
+            class="mt-8 pt-8 border-t border-slate-100 dark:border-slate-700/50 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+            <div>
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Category</div>
+              <div class="text-sm font-bold text-slate-900 dark:text-white">{{ device.device_type || 'Unknown' }}</div>
+            </div>
             <div>
               <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Manufacturer</div>
               <div class="text-sm font-bold text-slate-900 dark:text-white">{{ device.vendor || 'Unknown' }}</div>
@@ -445,6 +449,7 @@ import axios from 'axios'
 import TerminalModal from '../components/TerminalModal.vue'
 import { formatRelativeTime } from '@/utils/date'
 import { useNotifications } from '@/composables/useNotifications'
+import { deviceTypes, availableIcons, typeToIconMap } from '@/constants/devices'
 
 const route = useRoute()
 const device = ref(null)
@@ -466,10 +471,7 @@ const isIPOpen = ref(false)
 const categorySearch = ref('')
 const iconSearch = ref('')
 
-const deviceTypes = [
-  'Router', 'Switch', 'Access Point', 'Laptop', 'Smartphone', 'Tablet', 'Desktop',
-  'Server', 'Printer', 'Camera', 'TV', 'Game Console', 'IoT', 'Other'
-]
+
 
 const getIconComponent = (name) => {
   if (!name) return LucideIcons.HelpCircle
@@ -482,9 +484,14 @@ const filteredDeviceTypes = computed(() => {
 })
 
 const filteredIcons = computed(() => {
-  const allIcons = Object.keys(LucideIcons).filter(k => k !== 'default')
-  if (!iconSearch.value) return allIcons.slice(0, 100)
-  return allIcons.filter(k => k.toLowerCase().includes(iconSearch.value.toLowerCase())).slice(0, 100)
+  if (!iconSearch.value) return availableIcons
+  return availableIcons.filter(k => k.toLowerCase().includes(iconSearch.value.toLowerCase()))
+})
+
+watch(() => form.device_type, (newType) => {
+  if (newType && typeToIconMap[newType]) {
+    form.icon = typeToIconMap[newType]
+  }
 })
 const formatTime = (ts) => {
   if (!ts) return 'Never'
