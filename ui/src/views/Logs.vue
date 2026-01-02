@@ -1,7 +1,7 @@
 <template>
     <div class="space-y-6">
         <!-- Header -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex flex-col gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-slate-900 dark:text-white">System Logs</h1>
                 <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -9,23 +9,22 @@
                 </p>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <!-- Search Input -->
-                <div class="relative w-full md:w-64">
+                <div class="relative w-full md:w-96">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <MagnifyingGlassIcon class="h-4 w-4 text-slate-400" />
                     </div>
                     <input v-model="search" @input="debounceSearch" type="text"
-                        class="block w-full rounded-xl border-0 py-2 pl-10 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:text-white dark:ring-slate-700 dark:placeholder:text-slate-500"
+                        class="block w-full h-10 rounded-xl border-0 py-2 pl-10 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:text-white dark:ring-slate-700 dark:placeholder:text-slate-500"
                         placeholder="Search logs..." />
                 </div>
 
-                <div
-                    class="flex items-center gap-3 bg-white dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div class="flex items-center gap-3 flex-wrap">
                     <!-- Level Filter Dropdown -->
                     <div class="relative" v-click-outside="() => isLevelOpen = false">
                         <button @click="isLevelOpen = !isLevelOpen"
-                            class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group border-r border-slate-200 dark:border-slate-700 pr-4 mr-2">
+                            class="flex items-center gap-2 px-3 h-10 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors whitespace-nowrap">
                             <div class="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                                 <FunnelIcon class="h-4 w-4 text-slate-400" />
                                 <span>{{ levelFilter || 'All Levels' }}</span>
@@ -41,7 +40,7 @@
                             leave-from-class="transform scale-100 opacity-100"
                             leave-to-class="transform scale-95 opacity-0">
                             <div v-if="isLevelOpen"
-                                class="absolute top-full left-0 mt-2 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 z-20 overflow-hidden">
+                                class="absolute top-full right-0 mt-2 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 z-30 overflow-hidden">
                                 <button @click="levelFilter = ''; isLevelOpen = false; fetchLogs()"
                                     class="w-full px-4 py-2 text-sm text-left hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center justify-between"
                                     :class="levelFilter === '' ? 'bg-blue-50/50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-600 dark:text-slate-300'">
@@ -62,11 +61,11 @@
                     <!-- Custom Rows Dropdown -->
                     <div class="relative" v-click-outside="() => isRowsOpen = false">
                         <button @click="isRowsOpen = !isRowsOpen"
-                            class="flex items-center gap-2 pl-3 pr-2 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group">
+                            class="flex items-center gap-2 pl-3 pr-2 h-10 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors whitespace-nowrap">
                             <span
                                 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rows:</span>
                             <span
-                                class="text-sm font-semibold text-slate-700 dark:text-slate-200 min-w-[2rem] text-left">{{
+                                class="text-sm font-semibold text-slate-700 dark:text-slate-200 min-w-[1.5rem] text-left">{{
                                     limit }}</span>
                             <ChevronDownIcon class="h-4 w-4 text-slate-400 transition-transform duration-200"
                                 :class="{ 'rotate-180': isRowsOpen }" />
@@ -79,8 +78,8 @@
                             leave-from-class="transform scale-100 opacity-100"
                             leave-to-class="transform scale-95 opacity-0">
                             <div v-if="isRowsOpen"
-                                class="absolute top-full left-0 mt-2 w-32 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 z-20 overflow-hidden">
-                                <button v-for="opt in [50, 100, 500, 1000]" :key="opt"
+                                class="absolute top-full right-0 mt-2 w-32 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 z-30 overflow-hidden">
+                                <button v-for="opt in [15, 25, 50, 100, 500]" :key="opt"
                                     @click="limit = opt; isRowsOpen = false; changePage(1)"
                                     class="w-full px-4 py-2 text-sm text-left hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center justify-between"
                                     :class="limit === opt ? 'bg-blue-50/50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-600 dark:text-slate-300'">
@@ -91,18 +90,14 @@
                         </transition>
                     </div>
 
-                    <div class="h-5 w-px bg-slate-200 dark:bg-slate-700"></div>
-
                     <button @click="fetchLogs"
-                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-semibold rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 transition-all active:scale-95">
-                        <ArrowPathIcon class="h-4 w-4 mr-1.5" :class="{ 'animate-spin': loading }" />
-                        Refresh
+                        class="p-2 h-10 w-10 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400 shadow-sm"
+                        title="Refresh Logs">
+                        <ArrowPathIcon class="h-5 w-5" :class="{ 'animate-spin': loading }" />
                     </button>
 
-                    <div class="h-5 w-px bg-slate-200 dark:bg-slate-700"></div>
-
                     <button @click="clearLogs"
-                        class="p-2 ml-1 bg-white dark:bg-slate-800 border border-transparent rounded-lg hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors text-slate-400 dark:text-slate-500"
+                        class="p-2 h-10 w-10 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors text-slate-400 dark:text-slate-500 shadow-sm"
                         title="Clear All Logs">
                         <TrashIcon class="w-5 h-5" />
                     </button>
@@ -211,7 +206,7 @@ interface LogRecord {
 
 const logs = ref<LogRecord[]>([])
 const loading = ref(false)
-const limit = ref(100)
+const limit = ref(15)
 const page = ref(1)
 const total = ref(0)
 const totalPages = ref(1)
