@@ -69,11 +69,39 @@ async def handle_schedules():
                 [now],
             ).fetchall()
             
-            return trigger_global, scan_subnets_raw, rows, now
+            # 3. Handle OpenWRT Integration
+            trigger_openwrt = False
+            openwrt_conf = {}
+            try:
+                # Check for integrations table existence
+                if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='integrations'").fetchone():
+                    ow_row = conn.execute("SELECT config FROM integrations WHERE name = 'openwrt'").fetchone()
+                    if ow_row:
+                        ow_config = json.loads(ow_row[0])
+                        # Config: url, username, password, interval (mins), last_sync (iso)
+                        if ow_config.get("url") and ow_config.get("username"):
+                            interval_mins = int(ow_config.get("interval", 15))
+                            last_sync_str = ow_config.get("last_sync")
+                            
+                            should_run = False
+                            if not last_sync_str:
+                                should_run = True
+                            else:
+                                last_sync = datetime.fromisoformat(last_sync_str)
+                                if now >= last_sync + timedelta(minutes=interval_mins):
+                                    should_run = True
+                            
+                            if should_run:
+                                trigger_openwrt = True
+                                openwrt_conf = ow_config
+            except Exception as e:
+                logger.error(f"Error checking OpenWRT schedule: {e}")
+
+            return trigger_global, scan_subnets_raw, rows, now, trigger_openwrt, openwrt_conf
         finally:
             conn.close()
 
-    trigger_global, scan_subnets_raw, schedule_rows, now = await asyncio.to_thread(sync_check)
+    trigger_global, scan_subnets_raw, schedule_rows, now, trigger_openwrt, openwrt_conf = await asyncio.to_thread(sync_check)
 
     if trigger_global:
         target = None
@@ -107,6 +135,33 @@ async def handle_schedules():
                     conn.commit()
                 finally: conn.close()
             await asyncio.to_thread(update_sched)
+
+    if trigger_openwrt:
+        from app.services.openwrt import OpenWRTClient
+        async def run_openwrt_sync():
+            try:
+                logger.info("Starting scheduled OpenWRT sync...")
+                client = OpenWRTClient(openwrt_conf["url"], openwrt_conf["username"], openwrt_conf.get("password"))
+                await asyncio.to_thread(client.sync)
+                
+                # Update last_sync
+                def update_ts():
+                    conn = get_connection()
+                    try:
+                        # fetch again to merge
+                        row = conn.execute("SELECT config FROM integrations WHERE name = 'openwrt'").fetchone()
+                        if row:
+                            c = json.loads(row[0])
+                            c["last_sync"] = datetime.now(timezone.utc).isoformat()
+                            conn.execute("UPDATE integrations SET config = ? WHERE name = 'openwrt'", [json.dumps(c)])
+                            conn.commit()
+                    finally: conn.close()
+                await asyncio.to_thread(update_ts)
+                logger.info("OpenWRT sync completed.")
+            except Exception as e:
+                logger.error(f"OpenWRT sync failed: {e}")
+        
+        asyncio.create_task(run_openwrt_sync())
 
 async def enqueue_scan(target: str, scan_type: str) -> Optional[str]:
     from uuid import uuid4

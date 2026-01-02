@@ -58,7 +58,7 @@ async def _internal_list_devices(
             # Now fetch the data
             base_sql = """
                 SELECT id, ip, mac, name, display_name, device_type,
-                       first_seen, last_seen, vendor, icon, open_ports, status, attributes
+                       first_seen, last_seen, vendor, icon, open_ports, status, ip_type, attributes
                 FROM devices
             """
             if clauses:
@@ -72,7 +72,13 @@ async def _internal_list_devices(
                 safe_sort = sort_by
                 
             order = "DESC" if sort_order.lower() == "desc" else "ASC"
-            base_sql += f" ORDER BY {safe_sort} {order}"
+            
+            if safe_sort == "ip":
+                # Use numerical IP sorting via INET cast
+                # Use TRY_CAST to be safe against invalid IP strings (though we try to keep them valid)
+                base_sql += f" ORDER BY TRY_CAST(ip AS INET) {order}"
+            else:
+                base_sql += f" ORDER BY {safe_sort} {order}"
             
             # Pagination
             if limit > 0:
@@ -81,13 +87,40 @@ async def _internal_list_devices(
                 params.extend([limit, offset])
             
             rows = conn.execute(base_sql, params).fetchall()
+            items = []
+            device_ids = [r[0] for r in rows]
+            
+            # Fetch traffic history for sparklines (last 20 points)
+            traffic_map = {}
+            if device_ids:
+                placeholders = ','.join(['?'] * len(device_ids))
+                # optimization: ensure we have an index on device_id, timestamp
+                hist_sql = f"""
+                    SELECT device_id, down_rate, up_rate, timestamp
+                    FROM device_traffic_history
+                    WHERE device_id IN ({placeholders})
+                    QUALIFY ROW_NUMBER() OVER (PARTITION BY device_id ORDER BY timestamp DESC) <= 20
+                """
+                hist_rows = conn.execute(hist_sql, device_ids).fetchall()
+                for h_r in hist_rows:
+                    did, down, up, ts = h_r
+                    if did not in traffic_map: traffic_map[did] = []
+                    # We want chronological order for charts
+                    traffic_map[did].append({"down": down, "up": up, "timestamp": ts})
+                
+                # Sort each list by timestamp asc
+                for did in traffic_map:
+                    traffic_map[did].sort(key=lambda x: x["timestamp"])
+
             items = [
                 DeviceRead(
                     id=r[0], ip=r[1], mac=r[2], name=r[3], display_name=r[4], device_type=r[5],
                     first_seen=r[6], last_seen=r[7], vendor=r[8], icon=r[9],
                     open_ports=json.loads(r[10]) if r[10] else [],
                     status=r[11],
-                    attributes=json.loads(r[12]) if r[12] else {}
+                    ip_type=r[12],
+                    attributes=json.loads(r[13]) if r[13] else {},
+                    traffic_history=traffic_map.get(r[0], [])
                 )
                 for r in rows
             ]
@@ -137,7 +170,7 @@ async def get_device(device_id: str):
             row = conn.execute(
                 """
                 SELECT id, ip, mac, name, display_name, device_type,
-                       first_seen, last_seen, vendor, icon, open_ports, status, attributes
+                       first_seen, last_seen, vendor, icon, open_ports, status, ip_type, attributes
                 FROM devices WHERE id = ?
                 """,
                 [device_id],
@@ -146,11 +179,25 @@ async def get_device(device_id: str):
                 raise HTTPException(status_code=404, detail="Device not found")
             ports_rows = conn.execute("SELECT port, service, protocol FROM device_ports WHERE device_id = ? ORDER BY port", [device_id]).fetchall()
             detailed_ports = [{"port": r[0], "service": r[1], "protocol": r[2]} for r in ports_rows] if ports_rows else (json.loads(row[10]) if row[10] else [])
+            
+            # Traffic History for details (last 100 points or 24h)
+            h_rows = conn.execute("""
+                SELECT down_rate, up_rate, timestamp 
+                FROM device_traffic_history 
+                WHERE device_id = ? 
+                ORDER BY timestamp DESC LIMIT 200
+            """, [device_id]).fetchall()
+            
+            traffic = [{"down": hr[0], "up": hr[1], "timestamp": hr[2]} for hr in h_rows]
+            traffic.sort(key=lambda x: x["timestamp"])
+
             return DeviceRead(
                 id=row[0], ip=row[1], mac=row[2], name=row[3], display_name=row[4], device_type=row[5],
                 first_seen=row[6], last_seen=row[7], vendor=row[8], icon=row[9],
                 open_ports=detailed_ports, status=row[11],
-                attributes=json.loads(row[12]) if row[12] else {}
+                ip_type=row[12],
+                attributes=json.loads(row[13]) if row[13] else {},
+                traffic_history=traffic
             )
         finally:
             conn.close()
@@ -195,12 +242,12 @@ async def import_devices(devices_data: List[DeviceRead]):
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO devices 
-                    (id, ip, mac, name, display_name, device_type, first_seen, last_seen, vendor, icon, status, open_ports, attributes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, ip, mac, name, display_name, device_type, first_seen, last_seen, vendor, icon, status, ip_type, open_ports, attributes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     [
                         d.id, d.ip, d.mac, d.name, d.display_name, d.device_type,
-                        d.first_seen, d.last_seen, d.vendor, d.icon, d.status, json.dumps(d.open_ports), attrs_raw
+                        d.first_seen, d.last_seen, d.vendor, d.icon, d.status, d.ip_type, json.dumps(d.open_ports), attrs_raw
                     ]
                 )
                 count += 1

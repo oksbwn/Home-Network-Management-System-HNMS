@@ -174,7 +174,7 @@
               <div class="relative w-full group" v-click-outside="() => isIPOpen = false">
                 <button @click="isIPOpen = !isIPOpen"
                   class="w-full flex items-center justify-between px-4 py-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none hover:ring-4 hover:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium text-slate-900 dark:text-white group-hover:bg-white dark:group-hover:bg-slate-800">
-                  <span class="truncate">{{ getIPAllocationLabel(form.attributes.ip_allocation) }}</span>
+                  <span class="truncate">{{ getIPAllocationLabel(form.ip_type) }}</span>
                   <ChevronDown class="h-4 w-4 text-slate-400 transition-transform duration-200"
                     :class="{ 'rotate-180': isIPOpen }" />
                 </button>
@@ -185,20 +185,15 @@
                   leave-to-class="transform scale-95 opacity-0">
                   <div v-if="isIPOpen"
                     class="absolute z-[60] mt-2 w-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl py-1.5 overflow-hidden">
-                    <button @click="form.attributes.ip_allocation = undefined; isIPOpen = false"
+                    <button @click="form.ip_type = 'dynamic'; isIPOpen = false"
                       class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left hover:bg-blue-600 hover:text-white transition-colors"
-                      :class="!form.attributes.ip_allocation ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
+                      :class="form.ip_type === 'dynamic' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
                       Dynamic (DHCP)
                     </button>
-                    <button @click="form.attributes.ip_allocation = 'static'; isIPOpen = false"
+                    <button @click="form.ip_type = 'static'; isIPOpen = false"
                       class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left hover:bg-blue-600 hover:text-white transition-colors"
-                      :class="form.attributes.ip_allocation === 'static' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
+                      :class="form.ip_type === 'static' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
                       Static IP
-                    </button>
-                    <button @click="form.attributes.ip_allocation = 'dhcp'; isIPOpen = false"
-                      class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left hover:bg-blue-600 hover:text-white transition-colors"
-                      :class="form.attributes.ip_allocation === 'dhcp' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'">
-                      DHCP Reserved
                     </button>
                   </div>
                 </transition>
@@ -254,8 +249,25 @@
           <!-- Detailed Activity Log Table -->
           <div class="mt-8 pt-8 border-t border-slate-100 dark:border-slate-700/50">
             <div class="flex items-center justify-between mb-6">
-              <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Recent Activity Log</h3>
-              <span class="text-[10px] font-bold text-slate-400">{{ history.length }} Events Recorded</span>
+              <div class="flex items-center gap-4">
+                <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Recent Activity Log
+                </h3>
+                <span class="text-[10px] font-bold text-slate-400">{{ historyTotal }} Events Recorded</span>
+              </div>
+              <div class="flex items-center gap-2" v-if="historyTotal > historyLimit">
+                <button @click="changeHistoryPage(historyPage - 1)" :disabled="historyPage <= 1"
+                  class="p-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                  <ChevronDown class="w-3 h-3 rotate-90" />
+                </button>
+                <span class="text-[9px] font-bold text-slate-400">
+                  Page {{ historyPage }} of {{ Math.ceil(historyTotal / historyLimit) || 1 }}
+                </span>
+                <button @click="changeHistoryPage(historyPage + 1)"
+                  :disabled="historyPage >= (Math.ceil(historyTotal / historyLimit) || 1)"
+                  class="p-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                  <ChevronDown class="w-3 h-3 -rotate-90" />
+                </button>
+              </div>
             </div>
 
             <div class="grid grid-cols-1 gap-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
@@ -286,6 +298,41 @@
               <div v-if="history.length === 0" class="py-12 text-center">
                 <p class="text-xs text-slate-400 italic">No historical events recorded for this device yet.</p>
               </div>
+            </div>
+          </div>
+        </div>
+
+
+
+        <!-- Traffic History Chart -->
+        <div
+          class="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-3xl border border-slate-200 dark:border-slate-700/50 p-8 shadow-2xl relative overflow-hidden group">
+          <div class="flex items-center justify-between mb-8">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <div class="w-1.5 h-6 bg-purple-500 rounded-full"></div>
+              Network Traffic
+            </h2>
+          </div>
+
+          <div class="h-64" v-if="device && device.traffic_history && device.traffic_history.length > 0">
+            <apexchart type="area" height="100%" :options="trafficChartOptions" :series="trafficSeries"></apexchart>
+          </div>
+          <div v-else class="h-64 flex flex-col items-center justify-center text-slate-400 italic text-sm gap-2">
+            <Activity class="w-5 h-5 opacity-20" />
+            <span>No traffic history recorded yet.</span>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-4"
+            v-if="device && device.traffic_history && device.traffic_history.length > 0">
+            <div
+              class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800/30">
+              <div class="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1">Total Download
+              </div>
+              <div class="text-xl font-bold text-slate-900 dark:text-white">{{ formatBytes(totalTraffic.down) }}</div>
+            </div>
+            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800/30">
+              <div class="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1">Total Upload</div>
+              <div class="text-xl font-bold text-slate-900 dark:text-white">{{ formatBytes(totalTraffic.up) }}</div>
             </div>
           </div>
         </div>
@@ -379,14 +426,20 @@
 
     </div>
 
-    <TerminalModal v-if="showTerminal" :device="device" :port="sshPort" @close="showTerminal = false" />
   </div>
+
+  <TerminalModal v-if="showTerminal" :device="device" :port="sshPort" @close="showTerminal = false" />
+
 </template>
 
 <script setup>
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/vue'
 import * as LucideIcons from 'lucide-vue-next'
 import { ref, onMounted, reactive, computed, watch } from 'vue'
+import {
+  ArrowLeft, Loader2, Scan, Save, Search, ChevronDown, Activity, Terminal, ExternalLink, ShieldAlert,
+  Wifi, WifiOff
+} from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
 import TerminalModal from '../components/TerminalModal.vue'
@@ -398,10 +451,13 @@ const device = ref(null)
 const showTerminal = ref(false)
 const sshPort = ref(22)
 
-const form = reactive({ display_name: '', name: '', device_type: '', icon: '', attributes: {} })
+const form = reactive({ display_name: '', name: '', device_type: '', icon: '', ip_type: '', attributes: {} })
 
 const isScanning = ref(false)
 const history = ref([])
+const historyPage = ref(1)
+const historyLimit = ref(10)
+const historyTotal = ref(0)
 const fidelityHistory = ref([])
 const { notifySuccess, notifyError } = useNotifications()
 
@@ -409,6 +465,31 @@ const isCategoryOpen = ref(false)
 const isIPOpen = ref(false)
 const categorySearch = ref('')
 const iconSearch = ref('')
+
+const deviceTypes = [
+  'Router', 'Switch', 'Access Point', 'Laptop', 'Smartphone', 'Tablet', 'Desktop',
+  'Server', 'Printer', 'Camera', 'TV', 'Game Console', 'IoT', 'Other'
+]
+
+const getIconComponent = (name) => {
+  if (!name) return LucideIcons.HelpCircle
+  return LucideIcons[name] || LucideIcons.HelpCircle
+}
+
+const filteredDeviceTypes = computed(() => {
+  if (!categorySearch.value) return deviceTypes
+  return deviceTypes.filter(t => t.toLowerCase().includes(categorySearch.value.toLowerCase()))
+})
+
+const filteredIcons = computed(() => {
+  const allIcons = Object.keys(LucideIcons).filter(k => k !== 'default')
+  if (!iconSearch.value) return allIcons.slice(0, 100)
+  return allIcons.filter(k => k.toLowerCase().includes(iconSearch.value.toLowerCase())).slice(0, 100)
+})
+const formatTime = (ts) => {
+  if (!ts) return 'Never'
+  return new Date(ts).toLocaleString()
+}
 const vClickOutside = {
   mounted(el, binding) {
     el._clickOutside = (event) => {
@@ -425,106 +506,48 @@ const vClickOutside = {
 
 const getIPAllocationLabel = (val) => {
   if (val === 'static') return 'Static IP'
-  if (val === 'dhcp') return 'DHCP Reserved'
   return 'Dynamic (DHCP)'
 }
 
-// formatDate removed, formatRelativeTime kept
-const formatTime = (ts) => {
-  if (!ts) return 'Unknown'
-  return new Date(ts).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
-}
+// ... existing code ...
 
-// Map LucideIcons to local aliases for template usage if needed, 
-// but most are used via getIconComponent or component :is
-const Loader2 = LucideIcons.Loader2
-const Scan = LucideIcons.Scan
-const ArrowLeft = LucideIcons.ArrowLeft
-const Wifi = LucideIcons.Wifi
-const WifiOff = LucideIcons.WifiOff
-const Terminal = LucideIcons.Terminal
-const ExternalLink = LucideIcons.ExternalLink
-const ShieldAlert = LucideIcons.ShieldAlert
-const Save = LucideIcons.Save
-const ChevronDown = LucideIcons.ChevronDown
-const Search = LucideIcons.Search
+const fetchHistory = async () => {
+  try {
+    const offset = (historyPage.value - 1) * historyLimit.value
+    const res = await axios.get(`/api/v1/events/device/${route.params.id}?limit=${historyLimit.value}&offset=${offset}`)
+    history.value = res.data
 
-const deviceTypes = [
-  'Smartphone', 'Tablet', 'Laptop', 'Desktop', 'Server',
-  'Router/Gateway', 'Network Bridge', 'Switch', 'Access Point',
-  'TV/Entertainment', 'IoT Device', 'Smart Bulb', 'Smart Plug/Switch',
-  'Microcontroller', 'Security Camera', 'Sensor', 'Audio/Speaker',
-  'Streaming Device', 'Printer', 'NAS/Storage', 'Game Console',
-  'Media Server', 'Home Automation', 'Server Admin', 'Generic'
-]
+    // Fetch total count for pagination
+    const countRes = await axios.get(`/api/v1/events/device/${route.params.id}/count`)
+    historyTotal.value = countRes.data.total
 
-const filteredDeviceTypes = computed(() => {
-  if (!categorySearch.value) return deviceTypes
-  return deviceTypes.filter(t => t.toLowerCase().includes(categorySearch.value.toLowerCase()))
-})
-
-const availableIcons = [
-  'smartphone', 'tablet', 'laptop', 'monitor', 'server', 'router', 'network',
-  'layers', 'rss', 'tv', 'cpu', 'lightbulb', 'plug', 'microchip', 'camera',
-  'waves', 'speaker', 'play', 'printer', 'hard-drive', 'gamepad-2',
-  'play-circle', 'home', 'settings', 'shield-check', 'help-circle'
-]
-
-const filteredIcons = computed(() => {
-  if (!iconSearch.value) return availableIcons
-  return availableIcons.filter(i => i.toLowerCase().includes(iconSearch.value.toLowerCase()))
-})
-
-const typeToIconMap = {
-  "Smartphone": "smartphone",
-  "Tablet": "tablet",
-  "Laptop": "laptop",
-  "Desktop": "monitor",
-  "Server": "server",
-  "Router/Gateway": "router",
-  "Network Bridge": "network",
-  "Switch": "layers",
-  "Access Point": "rss",
-  "TV/Entertainment": "tv",
-  "IoT Device": "cpu",
-  "Smart Bulb": "lightbulb",
-  "Smart Plug/Switch": "plug",
-  "Microcontroller": "microchip",
-  "Security Camera": "camera",
-  "Sensor": "waves",
-  "Audio/Speaker": "speaker",
-  "Streaming Device": "play",
-  "Printer": "printer",
-  "NAS/Storage": "hard-drive",
-  "Game Console": "gamepad-2",
-  "Media Server": "play-circle",
-  "Home Automation": "home",
-  "Server Admin": "settings",
-  "Generic": "help-circle",
-  "Unknown": "help-circle"
-}
-
-const getIconComponent = (name) => {
-  if (!name) return LucideIcons.HelpCircle
-  // Direct match
-  if (LucideIcons[name]) return LucideIcons[name]
-  // Convert kebab to PascalCase (e.g., 'play-circle' -> 'PlayCircle')
-  const camel = name.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('')
-  return LucideIcons[camel] || LucideIcons[name] || LucideIcons.HelpCircle
-}
-
-watch(() => form.device_type, (newType) => {
-  if (newType && typeToIconMap[newType]) {
-    form.icon = typeToIconMap[newType]
+    // Also fetch high-fidelity data for the chart (independent of pagination)
+    const fidelityRes = await axios.get(`/api/v1/events/device/${route.params.id}/fidelity?hours=24`)
+    fidelityHistory.value = fidelityRes.data
+  } catch (e) {
+    console.error('Failed to fetch history:', e)
   }
+}
+
+const changeHistoryPage = (newPage) => {
+  if (newPage < 1) return
+  const maxPage = Math.ceil(historyTotal.value / historyLimit.value) || 1
+  if (newPage > maxPage) return
+
+  historyPage.value = newPage
+  fetchHistory()
+}
+
+onMounted(() => {
+  fetchDevice()
+  fetchHistory()
 })
 
-// Logic for Availability Visualization
+
+
 const longestOnlineStreak = computed(() => {
-  if (history.value.length === 0) return 0
   let maxHours = 0
   let currentStreak = 0
-
   const sorted = [...history.value].reverse()
   const now = new Date()
 
@@ -566,6 +589,7 @@ const avgOfflineDuration = computed(() => {
   }
   return counts > 0 ? Math.round(totalMins / counts) : 0
 })
+
 const availabilitySummary = computed(() => {
   // Create 24 blocks for the last 24 hours
   const blocks = []
@@ -691,6 +715,88 @@ const chartSeries = computed(() => {
   }]
 })
 
+const formatBytes = (bytes, decimals = 2) => {
+  if (!+bytes) return '0 B'
+  const k = 1024
+  const dm = decimals < 0 ? 0 : decimals
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+}
+const totalTraffic = computed(() => {
+  if (!device.value?.traffic_history) return { down: 0, up: 0 }
+  return device.value.traffic_history.reduce((acc, curr) => ({
+    down: acc.down + (curr.down || 0),
+    up: acc.up + (curr.up || 0)
+  }), { down: 0, up: 0 })
+})
+
+const trafficSeries = computed(() => {
+  if (!device.value?.traffic_history) return []
+  const mapped = device.value.traffic_history.map(h => {
+    const ts = new Date(h.timestamp).getTime()
+    return {
+      ts: isNaN(ts) ? 0 : ts,
+      down: h.down || 0,
+      up: h.up || 0
+    }
+  }).filter(d => d.ts > 0)
+
+  return [
+    { name: 'Download', data: mapped.map(d => ({ x: d.ts, y: d.down })) },
+    { name: 'Upload', data: mapped.map(d => ({ x: d.ts, y: d.up })) }
+  ]
+})
+
+const trafficChartOptions = computed(() => ({
+  chart: {
+    id: 'device-traffic',
+    toolbar: { show: false },
+    background: 'transparent',
+    fontFamily: 'inherit',
+    zoom: { enabled: false }
+  },
+  xaxis: {
+    type: 'datetime',
+    labels: {
+      style: { colors: '#94a3b8', fontSize: '9px', fontWeight: 600 },
+      datetimeFormatter: { year: 'yyyy', month: 'MMM', day: 'dd MMM', hour: 'HH:mm' }
+    },
+    axisBorder: { show: false },
+    axisTicks: { show: false },
+    tooltip: { enabled: false }
+  },
+  yaxis: {
+    labels: {
+      style: { colors: '#94a3b8', fontSize: '9px', fontFamily: 'inherit' },
+      formatter: (val) => formatBytes(val, 0)
+    },
+  },
+  grid: {
+    borderColor: 'rgba(148, 163, 184, 0.05)',
+    strokeDashArray: 4,
+  },
+  dataLabels: { enabled: false },
+  stroke: { curve: 'smooth', width: 2 },
+  colors: ['#10b981', '#3b82f6'], // Emerald (Down), Blue (Up)
+  fill: {
+    type: 'gradient',
+    gradient: {
+      opacityFrom: 0.5,
+      opacityTo: 0.1,
+    }
+  },
+  tooltip: {
+    theme: 'dark',
+    x: { format: 'MMM dd, HH:mm' },
+    y: { formatter: (val) => formatBytes(val) }
+  },
+  legend: {
+    position: 'top',
+    horizontalAlign: 'right'
+  }
+}))
+
 const parsedPorts = computed(() => {
   if (!device.value || !device.value.open_ports) return []
 
@@ -706,7 +812,10 @@ const parsedPorts = computed(() => {
   if (Array.isArray(data) && data.length > 0) {
     let normalized = []
     if (typeof data[0] === 'number') {
-      const commonMap = { 21: 'FTP', 22: 'SSH', 23: 'Telnet', 25: 'SMTP', 53: 'DNS', 80: 'HTTP', 443: 'HTTPS', 445: 'SMB', 3000: 'React', 8080: 'Web', 3306: 'MySQL', 5432: 'Postgres' }
+      const commonMap = {
+        21: 'FTP', 22: 'SSH', 23: 'Telnet', 25: 'SMTP', 53: 'DNS', 80: 'HTTP', 443: 'HTTPS', 445:
+          'SMB', 3000: 'React', 8080: 'Web', 3306: 'MySQL', 5432: 'Postgres'
+      }
       normalized = data.map(p => ({ port: p, service: commonMap[p] || 'Unknown', protocol: 'tcp' }))
     } else {
       // Already loaded as objects {port, service, protocol}
@@ -753,6 +862,7 @@ const fetchDevice = async () => {
     form.name = device.value.name
     form.device_type = device.value.device_type || 'Unknown'
     form.icon = device.value.icon || 'HelpCircle'
+    form.ip_type = device.value.ip_type || 'dynamic'
     // Initialize attributes if missing
     form.attributes = device.value.attributes || {}
   } catch (e) {
@@ -770,21 +880,5 @@ const saveChanges = async () => {
   }
 }
 
-const fetchHistory = async () => {
-  try {
-    const res = await axios.get(`/api/v1/events/device/${route.params.id}?limit=200`)
-    history.value = res.data
 
-    // Also fetch high-fidelity data for the chart
-    const fidelityRes = await axios.get(`/api/v1/events/device/${route.params.id}/fidelity?hours=24`)
-    fidelityHistory.value = fidelityRes.data
-  } catch (e) {
-    console.error('Failed to fetch history:', e)
-  }
-}
-
-onMounted(() => {
-  fetchDevice()
-  fetchHistory()
-})
 </script>

@@ -92,6 +92,10 @@ def migrate_db(conn: duckdb.DuckDBPyConnection) -> None:
         print("Migration: Adding 'status' column to 'devices'")
         conn.execute("ALTER TABLE devices ADD COLUMN status TEXT DEFAULT 'unknown'")
 
+    if 'ip_type' not in col_names:
+        print("Migration: Adding 'ip_type' column to 'devices'")
+        conn.execute("ALTER TABLE devices ADD COLUMN ip_type TEXT")
+
     # Ensure device_status_history table exists
     conn.execute("""
         CREATE TABLE IF NOT EXISTS device_status_history (
@@ -99,6 +103,19 @@ def migrate_db(conn: duckdb.DuckDBPyConnection) -> None:
             device_id TEXT NOT NULL,
             status TEXT NOT NULL,
             changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Ensure device_traffic_history table exists
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS device_traffic_history (
+            id          TEXT PRIMARY KEY,
+            device_id   TEXT NOT NULL,
+            timestamp   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            rx_bytes    BIGINT NOT NULL DEFAULT 0,
+            tx_bytes    BIGINT NOT NULL DEFAULT 0,
+            down_rate   BIGINT DEFAULT 0, 
+            up_rate     BIGINT DEFAULT 0
         )
     """)
 
@@ -156,6 +173,8 @@ def migrate_db(conn: duckdb.DuckDBPyConnection) -> None:
             print("Migration: Protocols normalized successfully.")
     except Exception as e:
         print(f"Migration error (normalization): {e}")
+
+
 
     conn.commit()
 

@@ -14,8 +14,10 @@ class DeviceRead(BaseModel):
     vendor: Optional[str] = None
     icon: Optional[str] = None
     status: Optional[str] = "unknown"
+    ip_type: Optional[str] = None
     open_ports: Optional[list] = []
     attributes: Optional[dict] = {}
+    traffic_history: Optional[list] = [] # List of {down: int, up: int, timestamp: datetime}
 
 class DeviceUpdate(BaseModel):
     name: Optional[str] = None
@@ -23,6 +25,7 @@ class DeviceUpdate(BaseModel):
     device_type: Optional[str] = None
     vendor: Optional[str] = None
     icon: Optional[str] = None
+    ip_type: Optional[str] = None
     attributes: Optional[dict] = None
 
 class PaginatedDevicesResponse(BaseModel):

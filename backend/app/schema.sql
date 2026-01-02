@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS devices (
     vendor        TEXT,
     icon          TEXT,
     status TEXT DEFAULT 'unknown',
+    ip_type       TEXT,
     open_ports    TEXT,
     attributes    TEXT
 );
@@ -91,4 +92,15 @@ CREATE TABLE IF NOT EXISTS classification_rules (
     priority         INTEGER NOT NULL DEFAULT 100,
     is_builtin       BOOLEAN NOT NULL DEFAULT FALSE,
     updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- device_traffic_history
+CREATE TABLE IF NOT EXISTS device_traffic_history (
+    id          TEXT PRIMARY KEY,
+    device_id   TEXT NOT NULL,
+    timestamp   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    rx_bytes    BIGINT NOT NULL DEFAULT 0,
+    tx_bytes    BIGINT NOT NULL DEFAULT 0,
+    down_rate   BIGINT DEFAULT 0, -- Bytes since last sync / check 
+    up_rate     BIGINT DEFAULT 0
 );

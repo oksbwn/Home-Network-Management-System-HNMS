@@ -1,550 +1,617 @@
 <template>
-  <div class="h-screen flex flex-col pt-16">
-    <div
-      class="px-4 md:px-6 lg:px-8 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-between z-10">
-      <div class="flex items-center gap-3">
-        <div class="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
-          <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2">
-            <path
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </div>
-        <div>
-          <h1 class="text-xl font-bold text-slate-900 dark:text-white">Settings</h1>
-          <p class="text-sm text-slate-500">System configuration and preferences</p>
-        </div>
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-semibold text-slate-900 dark:text-white">Settings</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">System configuration and preferences</p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
         <button @click="saveSettings" :disabled="saveStatus === 'saving'"
-          class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
-          :class="[
-            saveStatus === 'saving' ? 'bg-blue-600/80 cursor-wait' :
-              saveStatus === 'saved' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700',
-            'text-white'
-          ]" v-tooltip="'Save All Settings'">
-          <Loader2 v-if="saveStatus === 'saving'" class="w-4 h-4 animate-spin" />
-          <svg v-else-if="saveStatus === 'saved'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          <Save v-else class="w-4 h-4" />
-          <span>{{ saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save Configuration'
-          }}</span>
+          class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
+          :class="{ 'text-emerald-500 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20': saveStatus === 'saved' }"
+          v-tooltip="saveStatus === 'saved' ? 'Saved' : 'Save Configuration'">
+          <Loader2 v-if="saveStatus === 'saving'" class="w-5 h-5 animate-spin" />
+          <Check v-else-if="saveStatus === 'saved'" class="w-5 h-5" />
+          <Save v-else class="w-5 h-5" />
         </button>
       </div>
     </div>
 
-    <div class="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
-      <div class="max-w-6xl mx-auto space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Main Content (Left Column) -->
+      <div class="lg:col-span-2 space-y-6">
 
-          <!-- Main Content (Left Column) -->
-          <div class="lg:col-span-2 space-y-6">
-
-            <!-- Automated Discovery -->
-            <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-              <div class="flex items-center gap-3 mb-6">
-                <div class="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
-                  <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 class="text-base font-semibold text-slate-900 dark:text-white">Automated Discovery</h2>
-                  <p class="text-xs text-slate-500">Configure background network scanning</p>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Left: Subnets -->
-                <div class="space-y-3">
-                  <label
-                    class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Target Subnets
-                  </label>
-                  <div class="flex gap-2">
-                    <input v-model="newSubnet" @keyup.enter="addSubnet" type="text" placeholder="e.g. 192.168.1.0/24"
-                      class="flex-1 px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-colors"
-                      :class="subnetError ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'" />
-                    <button @click="addSubnet"
-                      class="p-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg hover:opacity-90 transition-opacity"
-                      v-tooltip="'Add Subnet'">
-                      <Plus class="w-5 h-5" />
-                    </button>
-                  </div>
-                  <p v-if="subnetError" class="text-xs text-red-500 font-medium animate-pulse">{{ subnetError }}</p>
-
-                  <div class="flex flex-wrap gap-2 pt-1">
-                    <div v-for="s in subnetList" :key="s"
-                      class="flex items-center gap-2 px-2.5 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-sm text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
-                      <span>{{ s }}</span>
-                      <button @click="removeSubnet(s)" class="text-slate-400 hover:text-red-500 transition-colors"
-                        v-tooltip="'Remove Subnet'">
-                        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                    <div v-if="subnetList.length === 0" class="text-sm text-slate-400 italic">
-                      No subnets configured
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Right: Schedule -->
-                <div class="space-y-4">
-                  <div>
-                    <label
-                      class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                      Scan Interval
-                    </label>
-                    <div class="relative">
-                      <select v-model="settings.scan_interval"
-                        class="w-full pl-3 pr-10 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm appearance-none">
-                        <option value="300">Every 5 minutes</option>
-                        <option value="600">Every 10 minutes</option>
-                        <option value="1800">Every 30 minutes</option>
-                        <option value="3600">Every hour</option>
-                        <option value="86400">Once per day</option>
-                      </select>
-                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label
-                      class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                      Last Run
-                    </label>
-                    <div
-                      class="px-3 py-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                      <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                      {{ formatLastRun(settings.last_discovery_run_at) }}
-                    </div>
-                  </div>
-                </div>
-              </div>
+        <!-- Automated Discovery -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
+            <div>
+              <h2 class="text-base font-semibold text-slate-900 dark:text-white">Automated Discovery</h2>
+              <p class="text-xs text-slate-500">Configure background network scanning</p>
+            </div>
+          </div>
 
-            <!-- MQTT Configuration -->
-            <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-              <div class="flex items-center gap-3 mb-6">
-                <div class="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600 dark:text-purple-400">
-                  <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
-                    <path
-                      d="M8.25 3v1.5M4.5 8.25H3m12.375-3.75a8.25 8.25 0 018.25 8.25H21M6.75 3a12 12 0 0112 12H16.5M3 13.5a8.25 8.25 0 018.25-8.25V6a7.5 7.5 0 00-7.5 7.5v.75m17.625 0V15a6 6 0 01-6 6H12m0 0V21" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 class="text-base font-semibold text-slate-900 dark:text-white">MQTT Configuration</h2>
-                  <p class="text-xs text-slate-500">Integration with Home Assistant</p>
-                </div>
-                <div class="ml-auto flex items-center gap-3">
-                  <div v-if="mqttStatus"
-                    class="flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-700">
-                    <div class="w-2 h-2 rounded-full"
-                      :class="mqttStatus === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'"></div>
-                    <span class="text-xs font-medium"
-                      :class="mqttStatus === 'online' ? 'text-emerald-600' : 'text-red-500'">
-                      {{ mqttStatus === 'online' ? 'Broker Online' : 'Broker Offline' }}
-                    </span>
-                  </div>
-                  <button @click="testMqtt" :disabled="testLoading"
-                    class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2">
-                    <Loader2 v-if="testLoading" class="w-3 h-3 animate-spin" />
-                    <svg v-else viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor"
-                      stroke-width="2.5">
-                      <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Left: Subnets -->
+            <div class="space-y-3">
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Target Subnets
+              </label>
+              <div class="flex gap-2">
+                <input v-model="newSubnet" @keyup.enter="addSubnet" type="text" placeholder="e.g. 192.168.1.0/24"
+                  class="flex-1 px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-colors"
+                  :class="subnetError ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'" />
+                <button @click="addSubnet"
+                  class="p-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg hover:opacity-90 transition-opacity"
+                  v-tooltip="'Add Subnet'">
+                  <Plus class="w-5 h-5" />
+                </button>
+              </div>
+              <p v-if="subnetError" class="text-xs text-red-500 font-medium animate-pulse">{{ subnetError }}</p>
+
+              <div class="flex flex-wrap gap-2 pt-1">
+                <div v-for="s in subnetList" :key="s"
+                  class="flex items-center gap-2 px-2.5 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-sm text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                  <span>{{ s }}</span>
+                  <button @click="removeSubnet(s)" class="text-slate-400 hover:text-red-500 transition-colors"
+                    v-tooltip="'Remove Subnet'">
+                    <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    Test Connection
                   </button>
                 </div>
-              </div>
-              <div class="space-y-4">
-                <!-- Connection Details -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div class="md:col-span-2">
-                    <label
-                      class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Broker
-                      Address</label>
-                    <input v-model="settings.mqtt_broker" type="text" placeholder="localhost"
-                      class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
-                  </div>
-                  <div>
-                    <label
-                      class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Port</label>
-                    <input v-model="settings.mqtt_port" type="text" placeholder="1883"
-                      class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
-                  </div>
-                </div>
-
-                <!-- Authentication & Topic -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-100 dark:border-slate-700 pt-4">
-                  <div>
-                    <label
-                      class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Username
-                      (Optional)</label>
-                    <input v-model="settings.mqtt_username" type="text" placeholder="mqtt_user" autocomplete="off"
-                      class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
-                  </div>
-                  <div>
-                    <label
-                      class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Password
-                      (Optional)</label>
-                    <input v-model="settings.mqtt_password" type="password" placeholder="••••••••"
-                      autocomplete="new-password"
-                      class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
-                  </div>
-                  <div>
-                    <label
-                      class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Base
-                      Topic</label>
-                    <input v-model="settings.mqtt_base_topic" type="text" placeholder="network_scanner"
-                      class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
-                  </div>
+                <div v-if="subnetList.length === 0" class="text-sm text-slate-400 italic">
+                  No subnets configured
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Sidebar (Right Column) -->
-          <div class="space-y-6">
-
-            <!-- UI Appearance -->
-            <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-              <div class="flex items-center gap-3 mb-6">
-                <div class="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400">
-                  <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
-                    <path
-                      d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 class="text-base font-semibold text-slate-900 dark:text-white">UI Appearance</h2>
-                  <p class="text-xs text-slate-500">Configure dashboard visibility</p>
-                </div>
-              </div>
-              <div class="space-y-4">
+            <!-- Right: Schedule -->
+            <div class="space-y-4">
+              <div>
                 <label
-                  class="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-600 w-full md:w-auto">
-                  <div
-                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
-                    :class="settings.hide_offline === 'true' ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'">
-                    <input type="checkbox" v-model="settings.hide_offline" true-value="true" false-value="false"
-                      class="hidden" />
-                    <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                      :class="settings.hide_offline === 'true' ? 'translate-x-6' : 'translate-x-1'"></span>
-                  </div>
-                  <div>
-                    <div class="text-sm font-medium text-slate-900 dark:text-white">Hide Offline Devices</div>
-                    <div class="text-xs text-slate-500">Only show active network nodes</div>
-                  </div>
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                  Scan Interval
                 </label>
-              </div>
-            </div>
-
-            <!-- Discovery Metrics -->
-            <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-              <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-4">Discovery Metrics</h3>
-              <div v-if="gist" class="space-y-4">
-                <div class="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-700">
-                  <span class="text-xs text-slate-500">Total Scans Run</span>
-                  <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ gist.total_scans }}</span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-700">
-                  <span class="text-xs text-slate-500">Discovery Jobs</span>
-                  <span class="text-sm font-semibold text-emerald-600">{{ gist.scans_done }}</span>
-                </div>
-                <div class="flex justify-between items-center py-2">
-                  <span class="text-xs text-slate-500">Currently Active</span>
-                  <span class="flex items-center gap-2">
-                    <span v-if="gist.scans_running > 0"
-                      class="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-                    <span class="text-sm font-semibold text-blue-600">{{ gist.scans_running }}</span>
-                  </span>
-                </div>
-              </div>
-              <div v-else class="text-sm text-slate-500 italic">No metrics available</div>
-            </div>
-
-            <!-- Port Lookup Engine -->
-            <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-              <div class="flex items-center gap-3 mb-4">
-                <div class="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600 dark:text-indigo-400">
-                  <Search class="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 class="text-base font-semibold text-slate-900 dark:text-white">Port Lookup</h2>
-                  <p class="text-xs text-slate-500">Device identification engine</p>
+                <div class="relative">
+                  <select v-model="settings.scan_interval"
+                    class="w-full pl-3 pr-10 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm appearance-none">
+                    <option value="300">Every 5 minutes</option>
+                    <option value="600">Every 10 minutes</option>
+                    <option value="1800">Every 30 minutes</option>
+                    <option value="3600">Every hour</option>
+                    <option value="86400">Once per day</option>
+                  </select>
+                  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
 
-              <div class="space-y-3 mb-4">
+              <div>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                  Last Run
+                </label>
                 <div
-                  class="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-700/50">
-                  <span class="text-xs text-slate-500">Active Rules</span>
-                  <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ rules.length }}</span>
-                </div>
-                <div
-                  class="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-700/50">
-                  <span class="text-xs text-slate-500">Engine Type</span>
-                  <span
-                    class="text-xs px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full font-medium uppercase tracking-wider">Dynamic</span>
+                  class="px-3 py-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                  {{ formatLastRun(settings.last_discovery_run_at) }}
                 </div>
               </div>
-
-              <button @click="openRulesModal"
-                class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-all shadow-sm">
-                <Settings2 class="w-4 h-4" />
-                <span>Manage Lookup Rules</span>
-              </button>
-            </div>
-
-            <!-- System Maintenance -->
-            <div class="bg-white dark:bg-slate-800 rounded-lg border border-red-200 dark:border-red-900/20 p-4">
-              <h3 class="text-sm font-semibold text-red-600 dark:text-red-400 mb-2">System Maintenance</h3>
-              <p class="text-xs text-slate-500 mb-4">Cleanup tools and data management</p>
-              <div class="flex items-center gap-2">
-                <button @click="clearAllData"
-                  class="p-2 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                  v-tooltip="'Factory Reset (Delete All Data)'">
-                  <Trash2 class="w-5 h-5" />
-                </button>
-                <button @click="resetConfig" :disabled="loading"
-                  class="p-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                  v-tooltip="'Restore Default Configuration'">
-                  <RotateCcw class="w-5 h-5" :class="{ 'animate-spin': loading }" />
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Confirmation Modal -->
-    <div v-if="confirmModal.isOpen" class="fixed inset-0 z-50 overflow-y-auto" @click.self="closeConfirmation">
-      <div class="flex min-h-screen items-center justify-center p-4">
-        <!-- Backdrop -->
-        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeConfirmation"></div>
-
-        <!-- Modal Card -->
-        <div
-          class="relative bg-white dark:bg-slate-800 rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-700 transform transition-all scale-100 opacity-100">
-          <div class="flex flex-col items-center text-center">
-            <div class="h-12 w-12 rounded-full flex items-center justify-center mb-4"
-              :class="confirmModal.type === 'delete' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-blue-100 dark:bg-blue-900/30'">
-              <component :is="confirmModal.type === 'delete' ? Trash2 : AlertTriangle" class="h-6 w-6"
-                :class="confirmModal.type === 'delete' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'" />
-            </div>
-
-            <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">{{ confirmModal.title }}</h3>
-
-            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-              {{ confirmModal.message }}
-            </p>
-
-            <div class="flex gap-3 w-full">
-              <button @click="closeConfirmation"
-                class="flex-1 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors border border-slate-200 dark:border-slate-600">
-                Cancel
-              </button>
-              <button @click="confirmAction" :disabled="loading"
-                class="flex-1 px-4 py-2.5 text-white rounded-lg text-sm font-semibold shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                :class="confirmModal.confirmClass">
-                <Loader2 v-if="loading" class="w-4 h-4 animate-spin" />
-                {{ loading ? 'Processing...' : confirmModal.confirmText }}
-              </button>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-    <!-- Classification Rules Modal -->
-    <div v-if="isRulesModalOpen" class="fixed inset-0 z-50 overflow-y-auto" @click.self="isRulesModalOpen = false">
-      <div class="flex min-h-screen items-center justify-center p-4">
-        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
-          @click="isRulesModalOpen = false"></div>
-        <div
-          class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col border border-slate-200 dark:border-slate-700">
-          <!-- Header -->
-          <div
-            class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/20">
-            <div class="flex items-center gap-3">
-              <div class="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600 dark:text-indigo-400">
-                <Fingerprint class="w-5 h-5" />
+
+        <!-- MQTT Configuration -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600 dark:text-purple-400">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
+                <path
+                  d="M8.25 3v1.5M4.5 8.25H3m12.375-3.75a8.25 8.25 0 018.25 8.25H21M6.75 3a12 12 0 0112 12H16.5M3 13.5a8.25 8.25 0 018.25-8.25V6a7.5 7.5 0 00-7.5 7.5v.75m17.625 0V15a6 6 0 01-6 6H12m0 0V21" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-base font-semibold text-slate-900 dark:text-white">MQTT Configuration</h2>
+              <p class="text-xs text-slate-500">Integration with Home Assistant</p>
+            </div>
+            <div class="ml-auto flex items-center gap-2">
+              <div v-if="mqttStatus"
+                class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 mr-2">
+                <div class="w-2 h-2 rounded-full"
+                  :class="mqttStatus === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'"></div>
+                <span class="text-xs font-medium"
+                  :class="mqttStatus === 'online' ? 'text-emerald-600' : 'text-red-500'">
+                  {{ mqttStatus === 'online' ? 'Online' : 'Offline' }}
+                </span>
+              </div>
+              <button @click="testMqtt" :disabled="testLoading"
+                class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
+                v-tooltip="'Test Connection'">
+                <Loader2 v-if="testLoading" class="w-4 h-4 animate-spin" />
+                <svg v-else viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="space-y-4">
+            <!-- Connection Details -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="md:col-span-2">
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Broker
+                  Address</label>
+                <input v-model="settings.mqtt_broker" type="text" placeholder="localhost"
+                  class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
               </div>
               <div>
-                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Port Lookup Rules</h3>
-                <p class="text-xs text-slate-500">Define how devices are identified via port probing</p>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Port</label>
+                <input v-model="settings.mqtt_port" type="text" placeholder="1883"
+                  class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <button @click="openAddRule"
-                class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-all">
-                <Plus class="w-4 h-4" />
-                Add New Rule
-              </button>
-              <button @click="isRulesModalOpen = false"
-                class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                <X class="w-5 h-5" />
-              </button>
-            </div>
-          </div>
 
-          <!-- List -->
-          <div class="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
-            <div v-if="rulesLoading" class="flex flex-col items-center justify-center py-12 gap-4">
-              <Loader2 class="w-8 h-8 animate-spin text-indigo-500" />
-              <p class="text-sm text-slate-500 animate-pulse font-medium">Loading rules engine...</p>
-            </div>
-            <div v-else-if="rules.length === 0" class="text-center py-12">
-              <div class="inline-flex p-4 bg-slate-50 dark:bg-slate-900/50 rounded-full mb-4">
-                <Search class="w-8 h-8 text-slate-300 dark:text-slate-600" />
+            <!-- Authentication & Topic -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-100 dark:border-slate-700 pt-4">
+              <div>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Username
+                  (Optional)</label>
+                <input v-model="settings.mqtt_username" type="text" placeholder="mqtt_user" autocomplete="off"
+                  class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
               </div>
-              <h4 class="text-slate-900 dark:text-white font-semibold">No rules found</h4>
-              <p class="text-sm text-slate-500 max-w-xs mx-auto mt-1">Start by adding a classification rule to better
-                identify devices on your network.</p>
-            </div>
-            <div v-else class="space-y-4">
-              <div v-for="rule in rules" :key="rule.id"
-                class="group bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 transition-all hover:border-indigo-500/50 hover:shadow-md">
-                <div class="flex items-start justify-between gap-4">
-                  <div class="flex items-center gap-4">
-                    <div
-                      class="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 text-indigo-600 dark:text-indigo-400">
-                      <component :is="getIconComponent(rule.icon)" class="w-6 h-6" />
-                    </div>
-                    <div>
-                      <div class="flex items-center gap-2 mb-1">
-                        <h4 class="font-bold text-slate-900 dark:text-white">{{ rule.name }}</h4>
-                        <span v-if="rule.is_builtin"
-                          class="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-400 rounded uppercase tracking-tighter">System</span>
-                        <span
-                          class="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 rounded uppercase tracking-tighter">Prio:
-                          {{ rule.priority }}</span>
-                      </div>
-                      <div class="flex flex-wrap gap-2">
-                        <span v-if="rule.pattern_hostname"
-                          class="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded text-[10px] font-medium border border-blue-100/50 dark:border-blue-900/30">Host:
-                          {{ rule.pattern_hostname }}</span>
-                        <span v-if="rule.pattern_vendor"
-                          class="px-2 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded text-[10px] font-medium border border-purple-100/50 dark:border-purple-900/30">Vendor:
-                          {{ rule.pattern_vendor }}</span>
-                        <span v-if="rule.ports && rule.ports.length"
-                          class="px-2 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded text-[10px] font-medium border border-amber-100/50 dark:border-amber-900/30">Ports:
-                          {{ rule.ports.join(', ') }}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2 self-start">
-                    <button @click="editRule(rule)"
-                      class="p-2 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
-                      v-tooltip="'Edit Rule'">
-                      <Pencil class="w-4 h-4" />
-                    </button>
-                    <button v-if="!rule.is_builtin" @click="deleteRule(rule.id)"
-                      class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                      v-tooltip="'Delete Rule'">
-                      <Trash class="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+              <div>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Password
+                  (Optional)</label>
+                <input v-model="settings.mqtt_password" type="password" placeholder="••••••••"
+                  autocomplete="new-password"
+                  class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
+              </div>
+              <div>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Base
+                  Topic</label>
+                <input v-model="settings.mqtt_base_topic" type="text" placeholder="network_scanner"
+                  class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Rule Form Modal -->
-    <div v-if="isRuleFormOpen" class="fixed inset-0 z-[60] overflow-y-auto" @click.self="isRuleFormOpen = false">
-      <div class="flex min-h-screen items-center justify-center p-4">
-        <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" @click="isRuleFormOpen = false">
-        </div>
-        <div
-          class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-700">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-xl font-bold text-slate-900 dark:text-white">{{ editingRule ? 'Edit' : 'Create' }}
-              Classification Rule</h3>
-            <button @click="isRuleFormOpen = false" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
-              <X class="w-5 h-5" />
-            </button>
+        <!-- OpenWRT Integration -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-400">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
+                <path
+                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-base font-semibold text-slate-900 dark:text-white">OpenWRT Integration</h2>
+              <p class="text-xs text-slate-500">Sync leases & traffic from Router (Pull Model)</p>
+            </div>
+            <!-- Status Badge -->
+            <div class="ml-auto flex items-center gap-2">
+              <div v-if="settings.openwrt_url"
+                class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 mr-2">
+                <div class="w-2 h-2 rounded-full" :class="{
+                  'bg-emerald-500 animate-pulse': openWrtStatus === 'online',
+                  'bg-red-500': openWrtStatus === 'error',
+                  'bg-slate-400': !openWrtStatus
+                }"></div>
+                <span class="text-xs font-medium" :class="{
+                  'text-emerald-600': openWrtStatus === 'online',
+                  'text-red-500': openWrtStatus === 'error',
+                  'text-slate-500': !openWrtStatus
+                }">
+                  {{ openWrtStatus === 'online' ? 'Connected' : (openWrtStatus === 'error' ? 'Error' : 'Not Verified')
+                  }}
+                </span>
+              </div>
+
+              <button @click="syncOpenWRT" :disabled="syncOpenWrtLoading"
+                class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
+                v-tooltip="'Sync Now'">
+                <Loader2 v-if="syncOpenWrtLoading" class="w-4 h-4 animate-spin" />
+                <svg v-else viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+                  <path
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+
+              <button @click="testOpenWRT" :disabled="testOpenWrtLoading"
+                class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
+                v-tooltip="'Test Connection'">
+                <Loader2 v-if="testOpenWrtLoading" class="w-4 h-4 animate-spin" />
+                <svg v-else viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div class="space-y-4">
-            <div>
-              <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Rule Name</label>
-              <input v-model="ruleForm.name" type="text" placeholder="e.g. My Custom Router"
-                class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
+            <!-- URL & Usage -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Device Type</label>
-                <select v-model="ruleForm.device_type"
-                  class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none">
-                  <option v-for="type in deviceTypes" :key="type" :value="type">{{ type }}</option>
-                </select>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Router
+                  URL</label>
+                <input v-model="settings.openwrt_url" type="text" placeholder="http://192.168.1.1"
+                  class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
               </div>
               <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Priority</label>
-                <input v-model.number="ruleForm.priority" type="number"
-                  class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Interval
+                  (Minutes)</label>
+                <input v-model="settings.openwrt_interval" type="number" placeholder="15"
+                  class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
               </div>
             </div>
 
-            <div>
-              <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Hostname Pattern
-                (Regex)</label>
-              <input v-model="ruleForm.pattern_hostname" type="text" placeholder="e.g. asus-.*"
-                class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none" />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Vendor Pattern
-                (Regex)</label>
-              <input v-model="ruleForm.pattern_vendor" type="text" placeholder="e.g. huawei|zte"
-                class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none" />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Ports (Comma
-                separated)</label>
-              <input v-model="portInput" type="text" placeholder="e.g. 80, 443, 8080"
-                class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none" />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Select Icon</label>
-              <div
-                class="grid grid-cols-6 gap-2 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 max-h-40 overflow-auto">
-                <button v-for="icon in availableIcons" :key="icon" @click="ruleForm.icon = icon"
-                  class="p-2 rounded-lg transition-all flex items-center justify-center border border-transparent"
-                  :class="ruleForm.icon === icon ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800' : 'hover:bg-white dark:hover:bg-slate-800 text-slate-400 dark:text-slate-600'">
-                  <component :is="getIconComponent(icon)" class="w-5 h-5" />
-                </button>
+            <!-- Creds -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">RPC
+                  Username</label>
+                <input v-model="settings.openwrt_username" type="text" placeholder="root"
+                  class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
+              </div>
+              <div>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">RPC
+                  Password (Optional)</label>
+                <input v-model="settings.openwrt_password" type="password" placeholder="••••••••"
+                  class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
               </div>
             </div>
+          </div>
+        </div>
+      </div>
 
-            <div class="flex gap-3 pt-4">
-              <button @click="isRuleFormOpen = false"
-                class="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
-              <button @click="saveRule"
-                class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-lg transition-all">Save
-                Rule</button>
+      <!-- Sidebar (Right Column) -->
+      <div class="space-y-6">
+
+        <!-- UI Appearance -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
+                <path
+                  d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-base font-semibold text-slate-900 dark:text-white">UI Appearance</h2>
+              <p class="text-xs text-slate-500">Configure dashboard visibility</p>
+            </div>
+          </div>
+          <div class="space-y-4">
+            <label
+              class="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-600 w-full md:w-auto">
+              <div class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                :class="settings.hide_offline === 'true' ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'">
+                <input type="checkbox" v-model="settings.hide_offline" true-value="true" false-value="false"
+                  class="hidden" />
+                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                  :class="settings.hide_offline === 'true' ? 'translate-x-6' : 'translate-x-1'"></span>
+              </div>
+              <div>
+                <div class="text-sm font-medium text-slate-900 dark:text-white">Hide Offline Devices</div>
+                <div class="text-xs text-slate-500">Only show active network nodes</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Discovery Metrics -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white mb-4">Discovery Metrics</h3>
+          <div v-if="gist" class="space-y-4">
+            <div class="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-700">
+              <span class="text-xs text-slate-500">Total Scans Run</span>
+              <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ gist.total_scans }}</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-700">
+              <span class="text-xs text-slate-500">Discovery Jobs</span>
+              <span class="text-sm font-semibold text-emerald-600">{{ gist.scans_done }}</span>
+            </div>
+            <div class="flex justify-between items-center py-2">
+              <span class="text-xs text-slate-500">Currently Active</span>
+              <span class="flex items-center gap-2">
+                <span v-if="gist.scans_running > 0" class="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+                <span class="text-sm font-semibold text-blue-600">{{ gist.scans_running }}</span>
+              </span>
+            </div>
+          </div>
+          <div v-else class="text-sm text-slate-500 italic">No metrics available</div>
+        </div>
+
+        <!-- Port Lookup Engine -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600 dark:text-indigo-400">
+              <Search class="w-5 h-5" />
+            </div>
+            <div>
+              <h2 class="text-base font-semibold text-slate-900 dark:text-white">Port Lookup</h2>
+              <p class="text-xs text-slate-500">Device identification engine</p>
+            </div>
+          </div>
+
+          <div class="space-y-3 mb-4">
+            <div class="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-700/50">
+              <span class="text-xs text-slate-500">Active Rules</span>
+              <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ rules.length }}</span>
+            </div>
+            <div class="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-700/50">
+              <span class="text-xs text-slate-500">Engine Type</span>
+              <span
+                class="text-xs px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full font-medium uppercase tracking-wider">Dynamic</span>
+            </div>
+          </div>
+
+          <button @click="openRulesModal"
+            class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-all shadow-sm">
+            <Settings2 class="w-4 h-4" />
+            <span>Manage Lookup Rules</span>
+          </button>
+        </div>
+
+        <!-- System Maintenance -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg border border-red-200 dark:border-red-900/20 p-4">
+          <h3 class="text-sm font-semibold text-red-600 dark:text-red-400 mb-2">System Maintenance</h3>
+          <p class="text-xs text-slate-500 mb-4">Cleanup tools and data management</p>
+          <div class="flex items-center gap-2">
+            <button @click="clearAllData"
+              class="p-2 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              v-tooltip="'Factory Reset (Delete All Data)'">
+              <Trash2 class="w-5 h-5" />
+            </button>
+            <button @click="resetConfig" :disabled="loading"
+              class="p-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              v-tooltip="'Restore Default Configuration'">
+              <RotateCcw class="w-5 h-5" :class="{ 'animate-spin': loading }" />
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Confirmation Modal -->
+  <div v-if="confirmModal.isOpen" class="fixed inset-0 z-50 overflow-y-auto" @click.self="closeConfirmation">
+    <div class="flex min-h-screen items-center justify-center p-4">
+      <!-- Backdrop -->
+      <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeConfirmation"></div>
+
+      <!-- Modal Card -->
+      <div
+        class="relative bg-white dark:bg-slate-800 rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-700 transform transition-all scale-100 opacity-100">
+        <div class="flex flex-col items-center text-center">
+          <div class="h-12 w-12 rounded-full flex items-center justify-center mb-4"
+            :class="confirmModal.type === 'delete' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-blue-100 dark:bg-blue-900/30'">
+            <component :is="confirmModal.type === 'delete' ? Trash2 : AlertTriangle" class="h-6 w-6"
+              :class="confirmModal.type === 'delete' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'" />
+          </div>
+
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">{{ confirmModal.title }}</h3>
+
+          <p class="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+            {{ confirmModal.message }}
+          </p>
+
+          <div class="flex gap-3 w-full">
+            <button @click="closeConfirmation"
+              class="flex-1 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors border border-slate-200 dark:border-slate-600">
+              Cancel
+            </button>
+            <button @click="confirmAction" :disabled="loading"
+              class="flex-1 px-4 py-2.5 text-white rounded-lg text-sm font-semibold shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              :class="confirmModal.confirmClass">
+              <Loader2 v-if="loading" class="w-4 h-4 animate-spin" />
+              {{ loading ? 'Processing...' : confirmModal.confirmText }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Classification Rules Modal -->
+  <div v-if="isRulesModalOpen" class="fixed inset-0 z-50 overflow-y-auto" @click.self="isRulesModalOpen = false">
+    <div class="flex min-h-screen items-center justify-center p-4">
+      <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="isRulesModalOpen = false">
+      </div>
+      <div
+        class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col border border-slate-200 dark:border-slate-700">
+        <!-- Header -->
+        <div
+          class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/20">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600 dark:text-indigo-400">
+              <Fingerprint class="w-5 h-5" />
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-slate-900 dark:text-white">Port Lookup Rules</h3>
+              <p class="text-xs text-slate-500">Define how devices are identified via port probing</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button @click="openAddRule"
+              class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-all">
+              <Plus class="w-4 h-4" />
+              Add New Rule
+            </button>
+            <button @click="isRulesModalOpen = false"
+              class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+              <X class="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <!-- List -->
+        <div class="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+          <div v-if="rulesLoading" class="flex flex-col items-center justify-center py-12 gap-4">
+            <Loader2 class="w-8 h-8 animate-spin text-indigo-500" />
+            <p class="text-sm text-slate-500 animate-pulse font-medium">Loading rules engine...</p>
+          </div>
+          <div v-else-if="rules.length === 0" class="text-center py-12">
+            <div class="inline-flex p-4 bg-slate-50 dark:bg-slate-900/50 rounded-full mb-4">
+              <Search class="w-8 h-8 text-slate-300 dark:text-slate-600" />
+            </div>
+            <h4 class="text-slate-900 dark:text-white font-semibold">No rules found</h4>
+            <p class="text-sm text-slate-500 max-w-xs mx-auto mt-1">Start by adding a classification rule to better
+              identify devices on your network.</p>
+          </div>
+          <div v-else class="space-y-4">
+            <div v-for="rule in rules" :key="rule.id"
+              class="group bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 transition-all hover:border-indigo-500/50 hover:shadow-md">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-4">
+                  <div
+                    class="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 text-indigo-600 dark:text-indigo-400">
+                    <component :is="getIconComponent(rule.icon)" class="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2 mb-1">
+                      <h4 class="font-bold text-slate-900 dark:text-white">{{ rule.name }}</h4>
+                      <span v-if="rule.is_builtin"
+                        class="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-400 rounded uppercase tracking-tighter">System</span>
+                      <span
+                        class="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 rounded uppercase tracking-tighter">Prio:
+                        {{ rule.priority }}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <span v-if="rule.pattern_hostname"
+                        class="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded text-[10px] font-medium border border-blue-100/50 dark:border-blue-900/30">Host:
+                        {{ rule.pattern_hostname }}</span>
+                      <span v-if="rule.pattern_vendor"
+                        class="px-2 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded text-[10px] font-medium border border-purple-100/50 dark:border-purple-900/30">Vendor:
+                        {{ rule.pattern_vendor }}</span>
+                      <span v-if="rule.ports && rule.ports.length"
+                        class="px-2 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded text-[10px] font-medium border border-amber-100/50 dark:border-amber-900/30">Ports:
+                        {{ rule.ports.join(', ') }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 self-start">
+                  <button @click="editRule(rule)"
+                    class="p-2 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
+                    v-tooltip="'Edit Rule'">
+                    <Pencil class="w-4 h-4" />
+                  </button>
+                  <button v-if="!rule.is_builtin" @click="deleteRule(rule.id)"
+                    class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                    v-tooltip="'Delete Rule'">
+                    <Trash class="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Rule Form Modal -->
+  <div v-if="isRuleFormOpen" class="fixed inset-0 z-[60] overflow-y-auto" @click.self="isRuleFormOpen = false">
+    <div class="flex min-h-screen items-center justify-center p-4">
+      <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" @click="isRuleFormOpen = false">
+      </div>
+      <div
+        class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-700">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white">{{ editingRule ? 'Edit' : 'Create' }}
+            Classification Rule</h3>
+          <button @click="isRuleFormOpen = false" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
+            <X class="w-5 h-5" />
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Rule Name</label>
+            <input v-model="ruleForm.name" type="text" placeholder="e.g. My Custom Router"
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Device Type</label>
+              <select v-model="ruleForm.device_type"
+                class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none">
+                <option v-for="type in deviceTypes" :key="type" :value="type">{{ type }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Priority</label>
+              <input v-model.number="ruleForm.priority" type="number"
+                class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Hostname Pattern
+              (Regex)</label>
+            <input v-model="ruleForm.pattern_hostname" type="text" placeholder="e.g. asus-.*"
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Vendor Pattern
+              (Regex)</label>
+            <input v-model="ruleForm.pattern_vendor" type="text" placeholder="e.g. huawei|zte"
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Ports (Comma
+              separated)</label>
+            <input v-model="portInput" type="text" placeholder="e.g. 80, 443, 8080"
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Select Icon</label>
+            <div
+              class="grid grid-cols-6 gap-2 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 max-h-40 overflow-auto">
+              <button v-for="icon in availableIcons" :key="icon" @click="ruleForm.icon = icon"
+                class="p-2 rounded-lg transition-all flex items-center justify-center border border-transparent"
+                :class="ruleForm.icon === icon ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800' : 'hover:bg-white dark:hover:bg-slate-800 text-slate-400 dark:text-slate-600'">
+                <component :is="getIconComponent(icon)" class="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div class="flex gap-3 pt-4">
+            <button @click="isRuleFormOpen = false"
+              class="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+            <button @click="saveRule"
+              class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-lg transition-all">Save
+              Rule</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </template>
 
 <script setup>
@@ -563,8 +630,16 @@ const settings = reactive({
   mqtt_port: '1883',
   mqtt_base_topic: 'network_scanner',
   mqtt_username: '',
-  mqtt_password: ''
+  mqtt_password: '',
+  openwrt_url: '',
+  openwrt_username: '',
+  openwrt_password: '',
+  openwrt_interval: 15
 })
+
+const openWrtStatus = ref(null)
+const testOpenWrtLoading = ref(false)
+const syncOpenWrtLoading = ref(false)
 
 const subnetList = ref([])
 const newSubnet = ref('')
@@ -679,6 +754,20 @@ const fetchSettings = async () => {
     if (mapping.mqtt_base_topic) settings.mqtt_base_topic = mapping.mqtt_base_topic
     if (mapping.mqtt_username) settings.mqtt_username = mapping.mqtt_username
     if (mapping.mqtt_password) settings.mqtt_password = mapping.mqtt_password
+
+    // Fetch OpenWRT specific config
+    try {
+      const owRes = await axios.get('/api/v1/integrations/openwrt/config')
+      console.log("DEBUG: OpenWRT Config Response:", owRes.data)
+      if (owRes.data) {
+        settings.openwrt_url = owRes.data.url
+        settings.openwrt_username = owRes.data.username
+        settings.openwrt_password = owRes.data.password
+        settings.openwrt_interval = owRes.data.interval
+        // Set status based on verified flag
+        openWrtStatus.value = owRes.data.verified ? 'online' : null
+      }
+    } catch { }
   } catch (e) {
     console.error("Failed to fetch config:", e)
   }
@@ -757,10 +846,53 @@ const fetchGist = async () => {
   }
 }
 
+const testOpenWRT = async () => {
+  testOpenWrtLoading.value = true
+  try {
+    await axios.post('/api/v1/integrations/openwrt/verify', {
+      url: settings.openwrt_url,
+      username: settings.openwrt_username,
+      password: settings.openwrt_password
+    })
+    notifySuccess("OpenWRT Connection Successful!")
+    openWrtStatus.value = 'online'
+  } catch (e) {
+    notifyError("Connection Failed: " + (e.response?.data?.detail || e.message))
+    openWrtStatus.value = 'error'
+  } finally {
+    testOpenWrtLoading.value = false
+  }
+}
+
+const syncOpenWRT = async () => {
+  syncOpenWrtLoading.value = true
+  try {
+    await axios.post('/api/v1/integrations/openwrt/sync')
+    notifySuccess("Sync started! Check device list shortly.")
+  } catch (e) {
+    notifyError("Sync Failed: " + (e.response?.data?.detail || e.message))
+  } finally {
+    syncOpenWrtLoading.value = false
+  }
+}
+
 const saveSettings = async () => {
   saveStatus.value = 'saving'
   try {
     await axios.post('/api/v1/config/', settings)
+
+    // Save OpenWRT config separately only if URL is provided
+    if (settings.openwrt_url) {
+      const owRes = await axios.post('/api/v1/integrations/openwrt/config', {
+        url: settings.openwrt_url,
+        username: settings.openwrt_username,
+        password: settings.openwrt_password,
+        interval: parseInt(settings.openwrt_interval) || 15
+      })
+      // Update status from backend auto-verification
+      openWrtStatus.value = owRes.data.verified ? 'online' : null
+    }
+
     saveStatus.value = 'saved'
     notifySuccess('Settings saved successfully')
     // Refresh MQTT status after save

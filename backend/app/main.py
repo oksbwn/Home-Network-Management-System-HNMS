@@ -14,6 +14,7 @@ from app.routers.ssh import router as ssh_router
 from app.routers.events import router as events_router
 from app.routers.mqtt import router as mqtt_router
 from app.routers.classification import router as classification_router
+from app.routers.openwrt import router as openwrt_router
 
 logger = logging.getLogger(__name__)
 app = FastAPI(title="Network Scanner API")
@@ -54,6 +55,9 @@ app.include_router(ssh_router, prefix="/api/v1/ssh", tags=["ssh"])
 app.include_router(events_router, prefix="/api/v1/events", tags=["events"])
 app.include_router(mqtt_router, prefix="/api/v1/mqtt", tags=["mqtt"])
 app.include_router(classification_router, prefix="/api/v1/classification", tags=["classification"])
+
+
+app.include_router(openwrt_router, prefix="/api/v1/integrations/openwrt", tags=["openwrt"])
 
 # SPA Static File Serving
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "static")

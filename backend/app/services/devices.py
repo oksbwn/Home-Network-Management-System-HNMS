@@ -51,13 +51,13 @@ async def batch_upsert_devices(devices_data: List[Dict[str, Any]]) -> List[str]:
                 
                 if mac:
                     existing_device = conn.execute(
-                        "SELECT id, first_seen, last_seen, ip, attributes, status FROM devices WHERE mac = ?", 
+                        "SELECT id, first_seen, last_seen, ip, ip_type, attributes, status FROM devices WHERE mac = ?", 
                         [mac]
                     ).fetchone()
                 
                 if not existing_device:
                     existing_device = conn.execute(
-                        "SELECT id, first_seen, last_seen, ip, attributes, status FROM devices WHERE ip = ?", 
+                        "SELECT id, first_seen, last_seen, ip, ip_type, attributes, status FROM devices WHERE ip = ?", 
                         [ip]
                     ).fetchone()
 
@@ -68,7 +68,7 @@ async def batch_upsert_devices(devices_data: List[Dict[str, Any]]) -> List[str]:
                 guessed_type, guessed_icon = classify_device(hostname, None, port_numbers)
 
                 if existing_device:
-                    device_id, first_seen, last_seen, old_ip, attributes_raw, old_status = existing_device
+                    device_id, first_seen, last_seen, old_ip, old_ip_type, attributes_raw, old_status = existing_device
                     conn.execute(
                         """
                         UPDATE devices
@@ -89,10 +89,10 @@ async def batch_upsert_devices(devices_data: List[Dict[str, Any]]) -> List[str]:
                     device_id = str(uuid4())
                     conn.execute(
                         """
-                        INSERT INTO devices (id, ip, mac, name, display_name, device_type, icon, open_ports, first_seen, last_seen, attributes, status)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO devices (id, ip, mac, name, display_name, device_type, icon, ip_type, open_ports, first_seen, last_seen, attributes, status)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
-                        [device_id, ip, mac, hostname, hostname or ip, guessed_type, guessed_icon, json.dumps(ports), now, now, "{}", 'online']
+                        [device_id, ip, mac, hostname, hostname or ip, guessed_type, guessed_icon, data.get("ip_type"), json.dumps(ports), now, now, "{}", 'online']
                     )
 
                 # Record status change if needed
@@ -241,10 +241,10 @@ async def update_device_fields(device_id: str, fields: Dict[str, Any]) -> Option
     def sync_update():
         conn = get_connection()
         try:
-            row = conn.execute("SELECT id, ip, mac, name, display_name, device_type, vendor, icon, status, first_seen, last_seen FROM devices WHERE id = ?", [device_id]).fetchone()
+            row = conn.execute("SELECT id, ip, mac, name, display_name, device_type, vendor, icon, status, ip_type, first_seen, last_seen FROM devices WHERE id = ?", [device_id]).fetchone()
             if not row: return None
             
-            valid_cols = {'display_name', 'device_type', 'icon', 'attributes'}
+            valid_cols = {'display_name', 'device_type', 'icon', 'attributes', 'ip_type'}
             updates = []
             params = []
             for k, v in fields.items():
@@ -257,7 +257,7 @@ async def update_device_fields(device_id: str, fields: Dict[str, Any]) -> Option
                 conn.execute(f"UPDATE devices SET {', '.join(updates)} WHERE id = ?", params)
                 conn.commit()
             
-            updated = conn.execute("SELECT id, ip, mac, name, display_name, device_type, vendor, icon, status, first_seen, last_seen FROM devices WHERE id = ?", [device_id]).fetchone()
+            updated = conn.execute("SELECT id, ip, mac, name, display_name, device_type, vendor, icon, status, ip_type, first_seen, last_seen FROM devices WHERE id = ?", [device_id]).fetchone()
             return updated
         finally:
             conn.close()
@@ -268,5 +268,5 @@ async def update_device_fields(device_id: str, fields: Dict[str, Any]) -> Option
     return {
         "id": updated[0], "ip": updated[1], "mac": updated[2], "name": updated[3],
         "display_name": updated[4], "device_type": updated[5], "vendor": updated[6],
-        "icon": updated[7], "status": updated[8], "first_seen": updated[9], "last_seen": updated[10]
+        "icon": updated[7], "status": updated[8], "ip_type": updated[9], "first_seen": updated[10], "last_seen": updated[11]
     }

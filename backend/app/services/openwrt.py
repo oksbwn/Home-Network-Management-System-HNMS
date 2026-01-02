@@ -1,0 +1,320 @@
+import logging
+import requests
+import json
+import os
+import re
+from base64 import b64encode
+from datetime import datetime, timezone
+from app.core.db import get_connection
+
+logger = logging.getLogger(__name__)
+
+class OpenWRTClient:
+    def __init__(self, base_url, username, password=None):
+        self.base_url = base_url.rstrip('/')
+        self.username = username
+        self.password = password
+        self.token = None
+        self.session = requests.Session()
+
+    def login(self):
+        """Authenticate with OpenWRT via ubus session login"""
+        if self.token:
+            return
+
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "call",
+            "params": [
+                "00000000000000000000000000000000",
+                "session",
+                "login",
+                {
+                    "username": self.username,
+                    "password": self.password or ""
+                }
+            ]
+        }
+        
+        try:
+            resp = self.session.post(f"{self.base_url}/ubus", json=payload, timeout=10)
+            data = resp.json()
+            
+            if "result" in data and isinstance(data["result"], list) and len(data["result"]) > 1:
+                status, session_data = data["result"]
+                if status == 0 and isinstance(session_data, dict) and "ubus_rpc_session" in session_data:
+                    self.token = session_data["ubus_rpc_session"]
+                    logger.info("OpenWRT Login successful")
+                    return
+            
+            logger.error(f"OpenWRT login failed. Response: {data}")
+            raise Exception("Login failed: Invalid credentials or response format")
+            
+        except Exception as e:
+            logger.error(f"Failed to connect to OpenWRT: {e}")
+            raise e
+
+    def _call(self, object, method, params=None, optional=False):
+        """Invoke a ubus method with standard error handling and retries"""
+        if not self.token:
+            self.login()
+        
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "call",
+            "params": [
+                self.token,
+                object,
+                method,
+                params or {}
+            ]
+        }
+        
+        try:
+            resp = self.session.post(f"{self.base_url}/ubus", json=payload, timeout=10)
+            data = resp.json()
+            
+            if "result" in data and isinstance(data["result"], list):
+                status = data["result"][0]
+                
+                if status == 0:
+                    if len(data["result"]) > 1:
+                        return data["result"][1]
+                    return [] 
+                
+                if status == 6: # Permission denied / Session expired
+                    logger.warning(f"OpenWRT Permission Denied (6) for {object}.{method}. Retrying login...")
+                    self.token = None
+                    self.login()
+                    
+                    payload["params"][0] = self.token
+                    resp = self.session.post(f"{self.base_url}/ubus", json=payload, timeout=10)
+                    data = resp.json()
+                    
+                    if data and "result" in data and isinstance(data["result"], list) and data["result"][0] == 0:
+                        return data["result"][1] if len(data["result"]) > 1 else []
+                
+                if not optional:
+                    logger.error(f"OpenWRT RPC Error {status} for {object}.{method}")
+                return [] if optional else None
+
+            if "error" in data:
+                logger.error(f"OpenWRT JSON-RPC Error: {data['error']}")
+                return [] if optional else None
+                
+            return [] if optional else None
+            
+        except Exception as e:
+            logger.error(f"OpenWRT Call Exception ({object}.{method}): {e}")
+            return [] if optional else None
+
+    def get_dhcp_leases(self):
+        """Get DHCP leases using luci-rpc.getDHCPLeases"""
+        res = self._call("luci-rpc", "getDHCPLeases", optional=True)
+        
+        leases = []
+        if isinstance(res, dict) and "dhcp_leases" in res:
+            for item in res["dhcp_leases"]:
+                leases.append({
+                    "ip": item.get("ipaddr"),
+                    "mac": item.get("macaddr"),
+                    "hostname": item.get("hostname", "*"),
+                    "expires": item.get("expires", 0)
+                })
+        return leases
+
+    def get_traffic_stats(self):
+        """Get traffic data and calculate deltas using /usr/sbin/nlbw"""
+        stats = {}
+        
+        res = self._call("file", "exec", {
+            "command": "/usr/sbin/nlbw", 
+            "params": ["-c", "json", "-g", "mac,fam", "-o", "conn"]
+        }, optional=True)
+        
+        if isinstance(res, dict) and "stdout" in res:
+            try:
+                data = json.loads(res["stdout"])
+                rows = data.get("data", [])
+                for row in rows:
+                    if len(row) >= 6: 
+                        mac = row[1].lower()
+                        if not mac or mac == "00:00:00:00:00:00": continue
+                        
+                        rx = int(row[3]) 
+                        tx = int(row[5]) 
+                        
+                        if mac not in stats:
+                            stats[mac] = {"down": 0, "up": 0}
+                        stats[mac]["down"] += rx
+                        stats[mac]["up"] += tx
+            except Exception as e:
+                logger.error(f"Failed to calculate traffic stats: {e}")
+
+        traffic_data = self._calculate_deltas(stats)
+        return traffic_data
+
+    def _calculate_deltas(self, current_stats):
+        """Calculates usage since last sync using a local cache file"""
+        cache_file = "data/openwrt_stats.json"
+        prev_stats = {}
+        
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    prev_stats = json.load(f)
+            except:
+                pass
+        
+        deltas = {}
+        for mac, curr in current_stats.items():
+            prev = prev_stats.get(mac, {"down": 0, "up": 0})
+            
+            down_delta = curr["down"] - prev["down"] if curr["down"] >= prev["down"] else curr["down"]
+            up_delta = curr["up"] - prev["up"] if curr["up"] >= prev["up"] else curr["up"]
+            
+            deltas[mac] = {"down": down_delta, "up": up_delta}
+        
+        try:
+             os.makedirs("data", exist_ok=True)
+             with open(cache_file, 'w') as f:
+                 json.dump(current_stats, f)
+        except:
+             pass
+             
+        return {"deltas": deltas, "totals": current_stats}
+
+    def sync(self):
+        """Pull data and update DB: DHCP Leases = Dynamic, Others = Static"""
+        with open("debug_sync.log", "a") as f: f.write(f"\n--- Starting Sync at {datetime.now()} ---\n")
+        logger.info("Starting OpenWRT Sync...")
+        os.makedirs("data", exist_ok=True)
+        
+        try:
+            self.login()
+            
+            leases = self.get_dhcp_leases()
+            traffic_data = self.get_traffic_stats()
+            traffic_deltas = traffic_data["deltas"]
+            traffic_totals = traffic_data["totals"]
+            
+            conn = get_connection()
+            try:
+                updated_count = 0
+                
+                # 1. Build a map of current DHCP leases
+                dhcp_map = {} # mac -> lease
+                for l in leases:
+                    if l.get("mac"):
+                        dhcp_map[l["mac"].lower()] = l
+
+                # 2. Get set of ALL MACs involved (Traffic + DHCP)
+                all_macs = set(dhcp_map.keys())
+                all_macs.update(traffic_totals.keys())
+
+                for mac in all_macs:
+                    mac = mac.lower()
+                    lease = dhcp_map.get(mac)
+                    
+                    t_delta = traffic_deltas.get(mac, {"down": 0, "up": 0})
+                    t_total = traffic_totals.get(mac, {"down": 0, "up": 0})
+                    
+                    # Skip if no useful data (no lease and no traffic)
+                    if not lease and t_total["down"] == 0 and t_total["up"] == 0:
+                        continue
+
+                    # Resolve Device ID & details from DB
+                    row = conn.execute("SELECT id, name, display_name, icon, attributes, ip, ip_type FROM devices WHERE mac = ?", [mac]).fetchone()
+                    if not row:
+                        row = conn.execute("SELECT id, name, display_name, icon, attributes, ip, ip_type FROM devices WHERE id = ?", [mac]).fetchone()
+                    
+                    if row:
+                        target_id = row[0]
+                        existing_name = row[1]
+                        # display_name = row[2]
+                        existing_icon = row[3]
+                        try:
+                            attrs = json.loads(row[4]) if row[4] else {}
+                        except:
+                            attrs = {}
+                        existing_ip = row[5]
+                        existing_ip_type = row[6]
+                    else:
+                        # If device not in DB, and has no lease, we skip (scanner hasn't found it yet)
+                        # We only create/update if we have a known ID or if we get a lease giving us an IP
+                        if not lease:
+                            continue
+                            
+                        target_id = mac
+                        existing_name = None
+                        existing_icon = None
+                        attrs = {}
+                        existing_ip = None
+                        existing_ip_type = 'dynamic'
+
+                    # Determine IP and IP Type
+                    if lease:
+                        ip = lease["ip"]
+                        # Prioritize lease IP if different, but if we don't update IP in devices, we just use it for record?
+                        # Wait, we DO update attributes. We should probably respect Lease IP for Dynamic devices.
+                        # But user said only scanner updates status. Did user imply only scanner updates IP too?
+                        # Probably. But if it's dynamic, OpenWRT is the source of truth for IP assignment.
+                        # "OpenART intergation will only set ip_type." => User said ONLY ip_type.
+                        # So we will NOT update IP in devices table. We will just use the lease IP for our internal logic if needed.
+                        ip_type = "dynamic"
+                        hostname = lease["hostname"] if lease["hostname"] and lease["hostname"] != "*" else None
+                        attrs["dhcp_expires"] = lease["expires"]
+                        if hostname: attrs["dhcp_hostname"] = hostname
+                    else:
+                        # Static / No Lease - use existing DB info
+                        ip = existing_ip
+                        ip_type = "static" 
+                        hostname = None
+
+                    # Use lease hostname if available
+                    name = existing_name or hostname or f"Device-{mac[-5:]}"
+                    
+                    attrs["last_sync"] = "openwrt"
+                    
+                    # Insert into history (Always record traffic if available)
+                    if t_total["down"] > 0 or t_total["up"] > 0:
+                        import uuid
+                        hist_id = str(uuid.uuid4())
+                        try:
+                            conn.execute("""
+                                INSERT INTO device_traffic_history 
+                                (id, device_id, rx_bytes, tx_bytes, down_rate, up_rate) 
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """, [hist_id, target_id, t_total["down"], t_total["up"], t_delta["down"], t_delta["up"]])
+                        except Exception as e:
+                             logger.error(f"Failed to insert traffic history for {mac}: {e}")
+
+                    # Update Device Table
+                    if row:
+                        # Update existing - ONLY ip_type and attributes
+                        try:
+                             conn.execute("""
+                                UPDATE devices SET
+                                    ip_type = ?,
+                                    attributes = ?
+                                WHERE id = ?
+                            """, [ip_type, json.dumps(attrs), target_id])
+                             updated_count += 1
+                        except Exception as e:
+                            logger.error(f"Failed to update device {mac}: {e}")
+                    # else:
+                        # User requested to IGNORE unknown devices. 
+                        # Only the network scanner creates devices.
+                        # pass
+                
+                conn.commit()
+                logger.info(f"OpenWRT Sync complete: {updated_count} devices processed.")
+                
+            finally:
+                conn.close()
+                
+        except Exception as e:
+            logger.error(f"OpenWRT Sync Failed: {e}", exc_info=True)
+            with open("debug_sync.log", "a") as f: f.write(f"Sync Exception: {e}\n")

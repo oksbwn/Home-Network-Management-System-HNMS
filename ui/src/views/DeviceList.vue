@@ -215,7 +215,16 @@
                       class="text-sm font-medium text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {{ device.display_name ||
                         'Unnamed Device' }}</div>
-                    <div class="text-xs text-slate-500 font-mono">{{ device.ip }}</div>
+                    <div class="flex items-center gap-2">
+                      <div class="text-xs text-slate-500 font-mono">{{ device.ip }}</div>
+                      <span v-if="device.ip_type"
+                        class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border"
+                        :class="device.ip_type === 'static'
+                          ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800'
+                          : 'bg-amber-50 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 border-amber-100 dark:border-amber-800'">
+                        {{ device.ip_type }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </td>
@@ -223,6 +232,12 @@
                 <div class="text-xs text-slate-600 dark:text-slate-300 font-medium">{{ device.vendor || 'Unknown' }}
                 </div>
                 <div class="text-xs text-slate-500 font-mono truncate max-w-[200px]">{{ device.mac || 'N/A' }}</div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="h-8 w-24 relative" v-if="device.traffic_history && device.traffic_history.length > 1">
+                  <TrafficSparkline :data="device.traffic_history" :width="100" :height="32" />
+                </div>
+                <span v-else class="text-[10px] text-slate-400 italic">No Activity</span>
               </td>
               <td class="px-6 py-4">
                 <div v-if="device.open_ports && device.open_ports.length > 0" class="flex flex-wrap gap-1">
@@ -323,6 +338,7 @@
 import { ref, onMounted, onUnmounted, reactive, computed, watch } from 'vue'
 import axios from 'axios'
 import Sparkline from '@/components/Sparkline.vue'
+import TrafficSparkline from '@/components/TrafficSparkline.vue'
 import EditDeviceModal from '@/components/EditDeviceModal.vue'
 import * as LucideIcons from 'lucide-vue-next'
 const { Eye, Pencil, Trash2, Download, Upload, RefreshCw, Loader2, Search, ChevronUp, ChevronDown, ArrowUpDown, Activity, Wifi, Database, ZapOff, Ticket, Filter, Layers } = LucideIcons
@@ -367,10 +383,11 @@ const successMessage = ref('')
 
 const tableHeaders = [
   { key: 'display_name', label: 'Device', class: 'w-1/4' },
-  { key: 'mac', label: 'Network Info', class: 'w-1/4' },
+  { key: 'mac', label: 'Network Info', class: 'w-1/5' },
+  { key: 'activity', label: 'Activity', class: 'w-1/6' },
   { key: 'open_ports', label: 'Open Ports', class: 'w-1/6' },
-  { key: 'device_type', label: 'Type', class: 'w-1/6' },
-  { key: 'last_seen', label: 'Last Seen', class: 'w-1/6' },
+  { key: 'device_type', label: 'Type', class: 'w-1/12' },
+  { key: 'last_seen', label: 'Last Seen', class: 'w-1/12' },
 ]
 
 const deviceTypes = computed(() => {
