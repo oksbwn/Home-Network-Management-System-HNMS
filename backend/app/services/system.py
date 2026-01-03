@@ -2,6 +2,7 @@ import os
 import shutil
 import logging
 import duckdb
+import asyncio
 from pathlib import Path
 from app.core.config import get_settings
 from app.core.db import get_connection, _shared_conn

@@ -461,6 +461,46 @@
       </div>
     </div>
   </div>
+
+  <!-- Maintenance Progress Modal -->
+  <div v-if="isRestoring || isDownloading" class="fixed inset-0 z-[100] overflow-y-auto">
+    <div class="flex min-h-screen items-center justify-center p-4 text-center">
+      <div class="fixed inset-0 bg-slate-900/80 backdrop-blur-md transition-opacity"></div>
+
+      <div
+        class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-8 border border-slate-200 dark:border-slate-700 transform transition-all">
+        <div class="flex flex-col items-center">
+          <div class="relative mb-6">
+            <div class="absolute inset-0 bg-blue-500/20 rounded-full blur-xl animate-pulse"></div>
+            <div class="relative h-16 w-16 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center"
+              :class="{ 'bg-emerald-50 dark:bg-emerald-900/30': maintenanceSuccess }">
+              <Check v-if="maintenanceSuccess" class="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+              <Loader2 v-else class="h-8 w-8 text-blue-600 dark:text-blue-400 animate-spin" />
+            </div>
+          </div>
+
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">
+            {{ maintenanceSuccess ? 'Operation Successful' : (isRestoring ? 'System Restore' : 'Preparing Backup') }}
+          </h3>
+
+          <p class="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+            {{ maintenanceStatus }}
+          </p>
+
+          <div v-if="!maintenanceSuccess"
+            class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden relative">
+            <div class="absolute top-0 bottom-0 left-0 bg-blue-500 animate-progress-indeterminate" style="width: 50%">
+            </div>
+          </div>
+
+          <p class="text-[10px] text-slate-400 mt-6 uppercase tracking-widest font-bold italic">
+            {{ maintenanceSuccess ? 'The page will reload automatically' : 'Please DO NOT close this window' }}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Classification Rules Modal -->
   <div v-if="isRulesModalOpen" class="fixed inset-0 z-50 overflow-y-auto" @click.self="isRulesModalOpen = false">
     <div class="flex min-h-screen items-center justify-center p-4">
@@ -681,6 +721,9 @@ const subnetError = ref('')
 let mqttPollTimer = null
 const restoreFileInput = ref(null)
 const isRestoring = ref(false)
+const isDownloading = ref(false)
+const maintenanceStatus = ref('')
+const maintenanceSuccess = ref(false)
 
 
 // Classification Rules State
@@ -1027,24 +1070,41 @@ const confirmAction = async () => {
       const file = restoreFileInput.value.files[0]
       if (!file) return
 
-      const formData = new FormData()
-      formData.append('file', file)
+      isRestoring.value = true
+      maintenanceStatus.value = 'Uploading database backup...'
 
-      await axios.post('/api/v1/system/restore', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
 
-      notifySuccess('Database restored! Reloading...')
-      setTimeout(() => {
-        window.location.reload()
-      }, 1500)
+        await axios.post('/api/v1/system/restore', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+
+        maintenanceSuccess.value = true
+        maintenanceStatus.value = 'Database restored! Re-initializing system...'
+        notifySuccess('Database restored successfully')
+
+        setTimeout(() => {
+          window.location.reload()
+        }, 3000)
+      } catch (err) {
+        isRestoring.value = false
+        maintenanceSuccess.value = false
+        const detail = err.response?.data?.detail || err.message
+        notifyError(`Restore failed: ${detail}`)
+        // Reset file input so user can try again
+        if (restoreFileInput.value) restoreFileInput.value.value = ''
+      }
     }
   } catch (e) {
-
     console.error(e)
-    alert('Action failed')
+    notifyError(`Action failed: ${e.message}`)
   } finally {
     loading.value = false
+    if (confirmModal.type !== 'restore') {
+      // Restore handles its own state for the modal
+    }
   }
 }
 
@@ -1053,10 +1113,17 @@ const clearAllData = () => openConfirmation('delete')
 const resetConfig = () => openConfirmation('reset')
 
 const downloadBackup = async () => {
+  isDownloading.value = true
+  maintenanceStatus.value = 'Generating database checkpoint...'
+
   try {
     const response = await axios.get('/api/v1/system/backup', {
       responseType: 'blob'
     })
+
+    maintenanceStatus.value = 'Download starting...'
+    maintenanceSuccess.value = true
+
     const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
@@ -1065,8 +1132,16 @@ const downloadBackup = async () => {
     link.click()
     link.remove()
     notifySuccess('Backup download started')
+
+    setTimeout(() => {
+      isDownloading.value = false
+      maintenanceSuccess.value = false
+    }, 2000)
   } catch (e) {
-    notifyError('Failed to download backup')
+    isDownloading.value = false
+    maintenanceSuccess.value = false
+    const detail = e.response?.data?.detail || e.message
+    notifyError(`Failed to download backup: ${detail}`)
   }
 }
 
@@ -1107,3 +1182,23 @@ onUnmounted(() => {
   if (mqttPollTimer) clearInterval(mqttPollTimer)
 })
 </script>
+
+<style scoped>
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-150%);
+  }
+
+  50% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(150%);
+  }
+}
+
+.animate-progress-indeterminate {
+  animation: progress-indeterminate 2.5s infinite ease-in-out;
+}
+</style>
