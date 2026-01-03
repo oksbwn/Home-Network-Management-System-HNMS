@@ -170,8 +170,17 @@ class OpenWRTClient:
         
         deltas = {}
         for mac, curr in current_stats.items():
-            prev = prev_stats.get(mac, {"down": 0, "up": 0})
+            if mac not in prev_stats:
+                # First time seeing this device (or cache lost). 
+                # value is cumulative, so we can't determine usage since last sync.
+                # Treat as 0 delta to avoid massive spikes (e.g. 60GB) being logged.
+                deltas[mac] = {"down": 0, "up": 0}
+                continue
+
+            prev = prev_stats[mac]
             
+            # Normal case: Calculate diff
+            # Handle restart (curr < prev): assume curr is all new traffic (reset)
             down_delta = curr["down"] - prev["down"] if curr["down"] >= prev["down"] else curr["down"]
             up_delta = curr["up"] - prev["up"] if curr["up"] >= prev["up"] else curr["up"]
             
