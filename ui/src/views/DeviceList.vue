@@ -213,6 +213,12 @@
                           class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                           <ShieldCheck class="h-3 w-3" /> Trusted
                         </span>
+                        <!-- DNS Indicator -->
+                        <span v-if="device.dns_stats && device.dns_stats.blocked > 0"
+                          class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 flex items-center gap-1"
+                          v-tooltip="`${device.dns_stats.blocked} blocked queries`">
+                          <ShieldAlert class="h-3 w-3" /> DNS
+                        </span>
                       </div>
                     </div>
                   </div>

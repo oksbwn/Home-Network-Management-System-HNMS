@@ -74,6 +74,10 @@ app.include_router(classification_router, prefix="/api/v1/classification", tags=
 
 
 app.include_router(openwrt_router, prefix="/api/v1/integrations/openwrt", tags=["openwrt"])
+
+from app.routers.adguard import router as adguard_router
+app.include_router(adguard_router, prefix="/api/v1/integrations/adguard", tags=["adguard"])
+
 app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["analytics"])
 
 from app.routers.logs import router as logs_router

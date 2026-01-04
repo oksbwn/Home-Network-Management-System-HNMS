@@ -269,6 +269,87 @@
             </div>
           </div>
         </div>
+
+        <!-- AdGuard Integration -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="p-2 bg-green-100 dark:bg-green-700 rounded-lg text-green-600 dark:text-green-400">
+              <ShieldCheck class="w-5 h-5" />
+            </div>
+            <div>
+              <h2 class="text-base font-semibold text-slate-900 dark:text-white">AdGuard Home Integration</h2>
+              <p class="text-xs text-slate-500">Sync blocked domains and DNS stats</p>
+            </div>
+            <!-- Status Badge -->
+            <div class="ml-auto flex items-center gap-2">
+              <div v-if="settings.adguard_url"
+                class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 mr-2">
+                <div class="w-2 h-2 rounded-full" :class="{
+                  'bg-emerald-500 animate-pulse': adguardStatus === 'online',
+                  'bg-red-500': adguardStatus === 'error',
+                  'bg-slate-400': !adguardStatus
+                }"></div>
+                <span class="text-xs font-medium" :class="{
+                  'text-emerald-600': adguardStatus === 'online',
+                  'text-red-500': adguardStatus === 'error',
+                  'text-slate-500': !adguardStatus
+                }">
+                  {{ adguardStatus === 'online' ? 'Connected' : (adguardStatus === 'error' ? 'Error' : 'Not Verified')
+                  }}
+                </span>
+              </div>
+
+              <button @click="syncAdguard" :disabled="syncAdguardLoading"
+                class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
+                v-tooltip="'Sync Now'">
+                <Loader2 v-if="syncAdguardLoading" class="w-4 h-4 animate-spin" />
+                <svg v-else viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+                  <path
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+
+              <button @click="testAdguard" :disabled="testAdguardLoading"
+                class="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"
+                v-tooltip="'Test Connection'">
+                <Loader2 v-if="testAdguardLoading" class="w-4 h-4 animate-spin" />
+                <svg v-else viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">AdGuard
+                  URL</label>
+                <input v-model="settings.adguard_url" type="text" placeholder="http://192.168.1.50:80"
+                  class="box-input" />
+              </div>
+              <div>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Interval
+                  (Minutes)</label>
+                <input v-model="settings.adguard_interval" type="number" placeholder="5" class="box-input" />
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Username</label>
+                <input v-model="settings.adguard_username" type="text" placeholder="admin" class="box-input" />
+              </div>
+              <div>
+                <label
+                  class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Password</label>
+                <input v-model="settings.adguard_password" type="password" placeholder="••••••••" class="box-input" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Sidebar (Right Column) -->
@@ -683,10 +764,74 @@ const settings = reactive({
   openwrt_url: '',
   openwrt_username: '',
   openwrt_password: '',
-  openwrt_interval: 15
+  openwrt_interval: 15,
+  adguard_url: '',
+  adguard_username: '',
+  adguard_password: '',
+  adguard_interval: 5
 })
 
 const openWrtStatus = ref(null)
+// ... (rest)
+
+// ... inside fetchSettings ...
+const fetchSettings = async () => {
+  try {
+    const res = await api.get('/config/')
+    if (res.data) {
+      const mapping = {}
+      res.data.forEach(item => {
+        mapping[item.key] = item.value
+      })
+
+      settings.scan_subnets = mapping.scan_subnets || '[]'
+      settings.scan_interval = String(mapping.scan_interval || 300)
+      settings.hide_offline = String(mapping.hide_offline || 'false')
+      settings.mqtt_broker = mapping.mqtt_broker || ''
+      settings.mqtt_port = String(mapping.mqtt_port || 1883)
+      settings.mqtt_base_topic = mapping.mqtt_base_topic || 'network_scanner'
+      settings.mqtt_username = mapping.mqtt_username || ''
+      settings.mqtt_password = mapping.mqtt_password || ''
+      settings.last_discovery_run_at = mapping.last_discovery_run_at || ''
+
+      try {
+        subnetList.value = JSON.parse(settings.scan_subnets)
+      } catch {
+        subnetList.value = []
+      }
+    }
+
+    // Fetch OpenWRT specific config
+    try {
+      const owRes = await api.get('/integrations/openwrt/config')
+      if (owRes.data) {
+        settings.openwrt_url = owRes.data.url
+        settings.openwrt_username = owRes.data.username
+        settings.openwrt_password = owRes.data.password
+        settings.openwrt_interval = owRes.data.interval
+        openWrtStatus.value = owRes.data.verified ? 'online' : null
+      }
+    } catch { }
+
+    // Fetch AdGuard config
+    try {
+      const agRes = await api.get('/integrations/adguard/config')
+      if (agRes.data) {
+        settings.adguard_url = agRes.data.url
+        settings.adguard_username = agRes.data.username
+        settings.adguard_password = agRes.data.password
+        settings.adguard_interval = agRes.data.interval
+        adguardStatus.value = agRes.data.verified ? 'online' : null
+      }
+    } catch (e) {
+      console.error("AdGuard config error", e)
+    }
+
+  } catch (e) {
+    console.error("Failed to fetch settings:", e)
+  }
+}
+
 const testOpenWrtLoading = ref(false)
 const syncOpenWrtLoading = ref(false)
 
@@ -787,46 +932,8 @@ const removeSubnet = (s) => {
   settings.scan_subnets = JSON.stringify(subnetList.value)
 }
 
-const fetchSettings = async () => {
-  try {
-    const res = await api.get('/config/')
-    const mapping = {}
-    res.data.forEach(item => {
-      mapping[item.key] = item.value
-    })
 
-    // Apply mapping
-    if (mapping.scan_subnets) {
-      settings.scan_subnets = mapping.scan_subnets
-      try {
-        subnetList.value = JSON.parse(mapping.scan_subnets)
-      } catch { subnetList.value = [] }
-    }
-    if (mapping.scan_interval) settings.scan_interval = mapping.scan_interval
-    if (mapping.last_discovery_run_at) settings.last_discovery_run_at = mapping.last_discovery_run_at
-    if (mapping.hide_offline) settings.hide_offline = mapping.hide_offline
-    if (mapping.mqtt_broker) settings.mqtt_broker = mapping.mqtt_broker
-    if (mapping.mqtt_port) settings.mqtt_port = mapping.mqtt_port
-    if (mapping.mqtt_base_topic) settings.mqtt_base_topic = mapping.mqtt_base_topic
-    if (mapping.mqtt_username) settings.mqtt_username = mapping.mqtt_username
-    if (mapping.mqtt_password) settings.mqtt_password = mapping.mqtt_password
 
-    // Fetch OpenWRT specific config
-    try {
-      const owRes = await api.get('/integrations/openwrt/config')
-      if (owRes.data) {
-        settings.openwrt_url = owRes.data.url
-        settings.openwrt_username = owRes.data.username
-        settings.openwrt_password = owRes.data.password
-        settings.openwrt_interval = owRes.data.interval
-        // Set status based on verified flag
-        openWrtStatus.value = owRes.data.verified ? 'online' : null
-      }
-    } catch { }
-  } catch (e) {
-    console.error("Failed to fetch config:", e)
-  }
-}
 
 const fetchRules = async () => {
   rulesLoading.value = true
@@ -931,6 +1038,41 @@ const syncOpenWRT = async () => {
   }
 }
 
+// AdGuard logic
+const adguardStatus = ref(null)
+const testAdguardLoading = ref(false)
+const syncAdguardLoading = ref(false)
+
+const testAdguard = async () => {
+  testAdguardLoading.value = true
+  try {
+    await api.post('/integrations/adguard/verify', {
+      url: settings.adguard_url,
+      username: settings.adguard_username,
+      password: settings.adguard_password
+    })
+    notifySuccess("AdGuard Connection Successful!")
+    adguardStatus.value = 'online'
+  } catch (e) {
+    notifyError("Connection Failed: " + (e.response?.data?.detail || e.message))
+    adguardStatus.value = 'error'
+  } finally {
+    testAdguardLoading.value = false
+  }
+}
+
+const syncAdguard = async () => {
+  syncAdguardLoading.value = true
+  try {
+    await api.post('/integrations/adguard/sync')
+    notifySuccess("AdGuard Sync started!")
+  } catch (e) {
+    notifyError("Sync Failed: " + (e.response?.data?.detail || e.message))
+  } finally {
+    syncAdguardLoading.value = false
+  }
+}
+
 const saveSettings = async () => {
   saveStatus.value = 'saving'
   try {
@@ -946,6 +1088,17 @@ const saveSettings = async () => {
       })
       // Update status from backend auto-verification
       openWrtStatus.value = owRes.data.verified ? 'online' : null
+    }
+
+    // Save AdGuard config
+    if (settings.adguard_url) {
+      const agRes = await api.post('/integrations/adguard/config', {
+        url: settings.adguard_url,
+        username: settings.adguard_username,
+        password: settings.adguard_password,
+        interval: parseInt(settings.adguard_interval) || 5
+      })
+      adguardStatus.value = agRes.data.verified ? 'online' : null
     }
 
     saveStatus.value = 'saved'

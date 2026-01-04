@@ -398,6 +398,169 @@
           </div>
         </div>
 
+
+        <!-- DNS Insights Card -->
+        <div class="premium-card relative overflow-hidden">
+          <!-- Background Decor -->
+          <div class="absolute -top-12 -right-12 w-64 h-64 bg-purple-500/10 dark:bg-purple-400/5 rounded-full blur-3xl">
+          </div>
+
+          <div class="flex items-center justify-between mb-8 relative z-10">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <div class="w-1.5 h-6 bg-purple-500 rounded-full"></div>
+              DNS Security Profile
+            </h2>
+            <div class="flex items-center gap-2">
+              <ShieldCheck v-if="dnsDeviceStats && dnsDeviceStats.blocked === 0 && dnsDeviceStats.total > 0"
+                class="w-4 h-4 text-emerald-500" />
+              <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Security Audit</span>
+            </div>
+          </div>
+
+          <div v-if="dnsDeviceStats && dnsDeviceStats.total > 0" class="space-y-6 relative z-10">
+            <!-- KPI Row -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div
+                class="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div class="text-[10px] font-black uppercase text-slate-400 mb-1">Total Queries</div>
+                <div class="text-2xl font-bold text-slate-900 dark:text-white">{{ dnsDeviceStats.total }}</div>
+                <div class="text-[10px] text-slate-500 mt-1">Last 24 Hours</div>
+              </div>
+              <div class="p-4 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-100 dark:border-red-800/30">
+                <div class="text-[10px] font-black uppercase text-red-600 dark:text-red-400 mb-1">Blocked</div>
+                <div class="text-2xl font-bold text-red-700 dark:text-red-400">{{ dnsDeviceStats.blocked }}</div>
+                <div class="text-[10px] text-red-500/60 mt-1">Filtered by Policy</div>
+              </div>
+              <div
+                class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800/30">
+                <div class="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1">Block Rate</div>
+                <div class="text-2xl font-bold text-slate-900 dark:text-white">{{ dnsDeviceStats.block_rate }}%</div>
+                <div class="text-[10px] text-blue-500/60 mt-1">Threat Mitigation</div>
+              </div>
+              <div
+                class="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-800/30">
+                <div class="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1">Avg Latency
+                </div>
+                <div class="text-2xl font-bold text-slate-900 dark:text-white">{{ dnsDeviceStats.avg_latency }}<span
+                    class="text-sm font-medium opacity-50 ml-1">ms</span></div>
+                <div class="text-[10px] text-emerald-500/60 mt-1">Response Time</div>
+              </div>
+            </div>
+
+            <!-- Health Score -->
+            <div class="p-5 bg-white/50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-slate-500">DNS Health Score</span>
+                  <div class="w-1 h-1 bg-slate-300 rounded-full"></div>
+                  <span class="text-[10px] font-bold"
+                    :class="dnsDeviceStats.blocked > 0 ? 'text-amber-500' : 'text-emerald-500'">
+                    {{ dnsDeviceStats.block_rate < 5 ? 'Excellent' : dnsDeviceStats.block_rate < 15 ? 'Good'
+                      : 'Needs Review' }} </span>
+                </div>
+                <span class="text-xs font-black"
+                  :class="dnsDeviceStats.blocked > 0 ? 'text-amber-500' : 'text-emerald-500'">
+                  {{ Math.max(0, 100 - dnsDeviceStats.block_rate) }}%
+                </span>
+              </div>
+              <div class="w-full h-2 by-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-1000"
+                  :class="dnsDeviceStats.blocked > 0 ? 'bg-amber-500' : 'bg-emerald-500'"
+                  :style="`width: ${Math.max(10, 100 - dnsDeviceStats.block_rate)}%`"></div>
+              </div>
+            </div>
+
+            <!-- Recent Queries List -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between px-1">
+                <div class="flex items-center gap-4">
+                  <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">Live Query Stream</h3>
+                  <span class="text-[10px] font-bold text-slate-400">{{ dnsTotal }} Queries Recorded</span>
+                </div>
+                <div class="flex items-center gap-2" v-if="dnsTotal > dnsLimit">
+                  <button @click="changeDnsPage(dnsPage - 1)" :disabled="dnsPage <= 1"
+                    class="p-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                    <ChevronDown class="w-3 h-3 rotate-90" />
+                  </button>
+                  <span class="text-[9px] font-bold text-slate-400">
+                    Page {{ dnsPage }} of {{ Math.ceil(dnsTotal / dnsLimit) || 1 }}
+                  </span>
+                  <button @click="changeDnsPage(dnsPage + 1)"
+                    :disabled="dnsPage >= (Math.ceil(dnsTotal / dnsLimit) || 1)"
+                    class="p-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                    <ChevronDown class="w-3 h-3 -rotate-90" />
+                  </button>
+                </div>
+              </div>
+
+              <div
+                class="bg-slate-50/50 dark:bg-slate-900/30 rounded-3xl border border-slate-100 dark:border-slate-800/50 overflow-hidden">
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left border-collapse">
+                    <thead>
+                      <tr class="border-b border-slate-100 dark:border-slate-800">
+                        <th class="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Time</th>
+                        <th class="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Domain</th>
+                        <th class="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                        <th class="py-3 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">
+                          Lat</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                      <tr v-for="(log, idx) in dnsLogs" :key="idx"
+                        class="hover:bg-white dark:hover:bg-slate-800/50 transition-colors group">
+                        <td class="py-2.5 px-4 whitespace-nowrap text-[10px] font-bold text-slate-400">
+                          {{ formatRelativeTime(log.timestamp) }}
+                        </td>
+                        <td class="py-2.5 px-4">
+                          <div class="flex flex-col max-w-[200px] lg:max-w-md">
+                            <span class="truncate font-mono text-xs font-bold text-slate-700 dark:text-slate-200"
+                              :title="log.domain">
+                              {{ log.domain }}
+                            </span>
+                            <span v-if="log.category"
+                              class="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">{{ log.category
+                              }}</span>
+                          </div>
+                        </td>
+                        <td class="py-2.5 px-4">
+                          <div class="flex items-center gap-2">
+                            <span v-if="log.is_blocked"
+                              class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50">
+                              Block
+                            </span>
+                            <span v-else-if="log.status === 'Rewrite'"
+                              class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50">
+                              Rewr
+                            </span>
+                            <span v-else
+                              class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
+                              Allow
+                            </span>
+                          </div>
+                        </td>
+                        <td class="py-2.5 px-4 text-right">
+                          <span class="text-xs font-mono font-bold text-slate-500">{{ log.response_time }}<span
+                              class="text-[8px] opacity-70">ms</span></span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div v-if="dnsLogs.length === 0" class="py-16 text-center">
+                  <Loader2 class="w-8 h-8 mx-auto mb-2 text-slate-200 animate-spin" />
+                  <p class="text-xs text-slate-400 italic">Analysing real-time DNS stream...</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div v-else class="py-20 text-center text-slate-400">
+            <ShieldAlert class="w-12 h-12 mx-auto mb-4 opacity-10" />
+            <h3 class="text-slate-900 dark:text-white font-bold">No DNS Activity</h3>
+            <p class="text-xs mt-1 opacity-60">Wait for this device to make queries or check AdGuard link.</p>
+          </div>
+        </div>
       </div>
 
       <!-- Column 3: Ports & Services (Sidebar) -->
@@ -480,6 +643,7 @@
             </div>
           </div>
         </div>
+
       </div>
 
     </div>
@@ -605,8 +769,39 @@ const fetchHistory = async () => {
     const fidelityRes = await api.get(`/events/device/${route.params.id}/fidelity?hours=24`)
     fidelityHistory.value = fidelityRes.data
   } catch (e) {
-    console.error('Failed to fetch history:', e)
+    console.error("Failed to fetch history:", e)
   }
+}
+
+const dnsDeviceStats = ref(null)
+const dnsLogs = ref([])
+const dnsPage = ref(1)
+const dnsLimit = ref(10)
+const dnsTotal = ref(0)
+
+const fetchDeviceDns = async () => {
+  try {
+    const offset = (dnsPage.value - 1) * dnsLimit.value
+    const [statsRes, logsRes, countRes] = await Promise.all([
+      api.get(`/analytics/dns/stats/${route.params.id}`),
+      api.get(`/analytics/dns/logs/${route.params.id}?limit=${dnsLimit.value}&offset=${offset}`),
+      api.get(`/analytics/dns/logs/${route.params.id}/count`)
+    ])
+    dnsDeviceStats.value = statsRes.data
+    dnsLogs.value = logsRes.data
+    dnsTotal.value = countRes.data.total
+  } catch (e) {
+    console.error("Failed to fetch device DNS data:", e)
+  }
+}
+
+const changeDnsPage = (newPage) => {
+  if (newPage < 1) return
+  const maxPage = Math.ceil(dnsTotal.value / dnsLimit.value) || 1
+  if (newPage > maxPage) return
+
+  dnsPage.value = newPage
+  fetchDeviceDns()
 }
 
 const changeHistoryPage = (newPage) => {
@@ -622,6 +817,7 @@ onMounted(() => {
   fetchDevice()
   fetchHistory()
   fetchAllDevices()
+  fetchDeviceDns()
 })
 
 

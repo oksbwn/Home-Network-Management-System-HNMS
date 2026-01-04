@@ -7,6 +7,12 @@
         <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Network overview and real-time monitoring</p>
       </div>
       <div class="flex items-center gap-3">
+        <div
+          class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+          <span class="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Scanner
+            Active</span>
+        </div>
         <button @click="fetchAllData" class="btn-action !rounded-xl p-2.5" v-tooltip="'Refresh All Data'">
           <RefreshCw class="w-5 h-5" :class="{ 'animate-spin': loading }" />
         </button>
@@ -46,47 +52,58 @@
     </div>
 
     <!-- Insights Row -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div class="insight-card bg-blue-600 group">
         <div class="p-3 bg-white/20 rounded-xl">
           <Layers class="w-6 h-6" />
         </div>
         <div class="relative z-10">
-          <p class="text-[10px] font-black uppercase tracking-widest opacity-70">Inventory Diversity</p>
-          <p class="text-lg font-bold">{{ globalStats.unique_vendors || 0 }} Vendor Brands <span
-              class="text-xs font-normal opacity-60 ml-1">Detected</span></p>
+          <p class="text-[10px] font-black uppercase tracking-widest opacity-70">Inventory</p>
+          <p class="text-lg font-bold">{{ globalStats.unique_vendors || 0 }} Brands</p>
         </div>
         <div class="absolute -right-2 -bottom-2 opacity-10 group-hover:scale-110 transition-transform">
           <Layers class="w-16 h-16" />
         </div>
       </div>
 
-      <div class="insight-card bg-emerald-600 font-medium group">
+      <div class="insight-card bg-indigo-600 group">
         <div class="p-3 bg-white/20 rounded-xl">
-          <ShieldCheck class="w-6 h-6" />
+          <Globe class="w-6 h-6" />
         </div>
         <div class="relative z-10">
-          <p class="text-[10px] font-black uppercase tracking-widest opacity-70">Security Posture</p>
-          <p class="text-lg font-bold">{{ globalStats.trusted || 0 }} Trusted Devices <span
-              class="text-xs font-normal opacity-60 ml-1">({{ Math.round((globalStats.trusted / (globalStats.total ||
-                1)) * 100) }}%)</span></p>
+          <p class="text-[10px] font-black uppercase tracking-widest opacity-70">DNS Queries</p>
+          <p class="text-lg font-bold">{{ summary.dns?.total?.toLocaleString() || 0 }} <span
+              class="text-xs font-normal opacity-60 ml-0.5">24h</span></p>
         </div>
         <div class="absolute -right-2 -bottom-2 opacity-10 group-hover:scale-110 transition-transform">
-          <ShieldCheck class="w-16 h-16" />
+          <Globe class="w-16 h-16" />
+        </div>
+      </div>
+
+      <div class="insight-card bg-rose-600 group">
+        <div class="p-3 bg-white/20 rounded-xl">
+          <ShieldAlert class="w-6 h-6" />
+        </div>
+        <div class="relative z-10">
+          <p class="text-[10px] font-black uppercase tracking-widest opacity-70">Block Rate</p>
+          <p class="text-lg font-bold">{{ summary.dns?.block_rate || 0 }}% <span
+              class="text-xs font-normal opacity-60 ml-0.5">Threats</span></p>
+        </div>
+        <div class="absolute -right-2 -bottom-2 opacity-10 group-hover:scale-110 transition-transform">
+          <ShieldAlert class="w-16 h-16" />
         </div>
       </div>
 
       <div class="insight-card bg-slate-800 group">
         <div class="p-3 bg-white/10 rounded-xl">
-          <RefreshCw class="w-6 h-6" />
+          <Zap class="w-6 h-6" />
         </div>
         <div class="relative z-10">
-          <p class="subtext-caps !opacity-70">Discovery System</p>
-          <p class="text-lg font-bold">Automatic Scan <span class="text-xs font-normal opacity-60 ml-1">Active</span>
-          </p>
+          <p class="text-[10px] font-black uppercase tracking-widest opacity-70">Top DNS Client</p>
+          <p class="text-xs font-bold truncate max-w-[120px]">{{ summary.dns?.top_client || 'None' }}</p>
         </div>
         <div class="absolute -right-2 -bottom-2 opacity-10 group-hover:scale-110 transition-transform">
-          <Search class="w-16 h-16" />
+          <Activity class="w-16 h-16" />
         </div>
       </div>
     </div>
@@ -151,6 +168,40 @@
             </div>
             <span class="text-xs font-bold text-slate-900 dark:text-white">{{ item.value }}</span>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DNS Activity Row -->
+    <div
+      class="bg-white/70 dark:bg-slate-800/70 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
+            <ShieldCheck class="w-5 h-5" />
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">DNS Security Pulse</h2>
+            <p class="text-xs text-slate-500">Global DNS activity and blocked threats (24h)</p>
+          </div>
+        </div>
+        <div class="hidden sm:flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
+          <div class="flex items-center gap-2">
+            <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+            <span class="text-slate-600 dark:text-slate-300">Passed</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
+            <span class="text-slate-600 dark:text-slate-300">Blocked</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-[200px] w-full">
+        <apexchart v-if="dnsHistory.length > 0" type="area" height="100%" :options="dnsChartOptions"
+          :series="dnsHistorySeries" />
+        <div v-else class="h-full flex flex-col items-center justify-center text-slate-400 italic space-y-3">
+          <p class="text-sm">Waiting for DNS data sync...</p>
         </div>
       </div>
     </div>
@@ -257,7 +308,7 @@ import api from '@/utils/api'
 import * as LucideIcons from 'lucide-vue-next'
 import {
   Database, Wifi, WifiOff, ShieldAlert, Activity, RefreshCw,
-  Layers, ArrowDown, ArrowUp, Zap, HelpCircle, Lock, ShieldCheck, Search
+  Layers, ArrowDown, ArrowUp, Zap, HelpCircle, Lock, ShieldCheck, Search, Globe
 } from 'lucide-vue-next'
 import { formatRelativeTime } from '@/utils/date'
 
@@ -277,6 +328,11 @@ const aggregateTotals = ref({ download: 0, upload: 0 })
 const distributionData = ref({ vendors: [], types: [] })
 const recentEvents = ref([])
 const topConsumers = ref([])
+const dnsHistory = ref([])
+const summary = ref({
+  traffic: { download: 0, upload: 0 },
+  dns: { total: 0, blocked: 0, block_rate: 0, top_client: 'None' }
+})
 
 const mainStats = computed(() => [
   {
@@ -284,8 +340,8 @@ const mainStats = computed(() => [
     value: globalStats.value.total,
     icon: Database,
     bgClass: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-    trend: globalStats.value.new_24h > 0 ? `+${globalStats.value.new_24h} New` : 'Stable',
-    trendColor: globalStats.value.new_24h > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'
+    trend: `${Math.round((globalStats.value.trusted / (globalStats.value.total || 1)) * 100)}% Trusted`,
+    trendColor: 'text-blue-600 dark:text-blue-400'
   },
   {
     label: 'Online Now',
@@ -418,17 +474,31 @@ const distributionOptions = computed(() => ({
   }
 }))
 
+const dnsHistorySeries = computed(() => [
+  { name: 'Passed', data: dnsHistory.value.map(d => ({ x: new Date(d.timestamp).getTime(), y: d.total - d.blocked })) },
+  { name: 'Blocked', data: dnsHistory.value.map(d => ({ x: new Date(d.timestamp).getTime(), y: d.blocked })) }
+])
+
+const dnsChartOptions = computed(() => ({
+  ...trafficChartOptions.value,
+  chart: { ...trafficChartOptions.value.chart, id: 'dns-security-trend' },
+  colors: ['#10b981', '#ef4444'],
+  yaxis: { ...trafficChartOptions.value.yaxis, labels: { ...trafficChartOptions.value.yaxis.labels, formatter: (val) => Math.round(val) } },
+  tooltip: { ...trafficChartOptions.value.tooltip, y: { formatter: (val) => `${Math.round(val)} queries` } }
+}))
+
 const distributionSeries = computed(() => distributionData.value.types.map(t => t.value))
 
 const fetchAllData = async () => {
   loading.value = true
   try {
-    const [devs, traffic, dist, events, top] = await Promise.all([
+    const [devs, traffic, dist, events, top, dnsTr] = await Promise.all([
       api.get('/devices/'),
       api.get('/analytics/traffic?range=24h'),
       api.get('/analytics/distribution'),
       api.get('/events/?limit=5'),
-      api.get('/analytics/top-devices?limit=5')
+      api.get('/analytics/top-devices?limit=5'),
+      api.get('/analytics/dns/traffic?range=24h')
     ])
 
     if (devs.data.global_stats) globalStats.value = devs.data.global_stats
@@ -437,6 +507,14 @@ const fetchAllData = async () => {
     distributionData.value = dist.data
     recentEvents.value = events.data
     topConsumers.value = top.data
+    dnsHistory.value = dnsTr.data
+
+    try {
+      const gSummary = await api.get('/analytics/summary')
+      summary.value = gSummary.data
+    } catch (e) {
+      console.error('Failed to fetch summary:', e)
+    }
   } catch (e) {
     console.error('Failed to fetch dashboard data:', e)
   } finally {

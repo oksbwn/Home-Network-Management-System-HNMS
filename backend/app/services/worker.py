@@ -113,11 +113,39 @@ async def handle_schedules():
             except Exception as e:
                 logger.error(f"Error checking OpenWRT schedule: {e}")
 
-            return trigger_global, scan_subnets_raw, rows, now, trigger_openwrt, openwrt_conf
+            # 4. Handle AdGuard Integration
+            trigger_adguard = False
+            adguard_conf = {}
+            try:
+                # Check for integrations table existence
+                if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='integrations'").fetchone():
+                    ag_row = conn.execute("SELECT config FROM integrations WHERE name = 'adguard'").fetchone()
+                    if ag_row:
+                        ag_config = json.loads(ag_row[0])
+                        # Config: url, username, password, interval (mins), last_sync (iso)
+                        if ag_config.get("url") and ag_config.get("username"):
+                            interval_mins = int(ag_config.get("interval", 15))
+                            last_sync_str = ag_config.get("last_sync")
+                            
+                            should_run = False
+                            if not last_sync_str:
+                                should_run = True
+                            else:
+                                last_sync = datetime.fromisoformat(last_sync_str)
+                                if now >= last_sync + timedelta(minutes=interval_mins):
+                                    should_run = True
+                            
+                            if should_run:
+                                trigger_adguard = True
+                                adguard_conf = ag_config
+            except Exception as e:
+                logger.error(f"Error checking AdGuard schedule: {e}")
+
+            return trigger_global, scan_subnets_raw, rows, now, trigger_openwrt, openwrt_conf, trigger_adguard, adguard_conf
         finally:
             conn.close()
 
-    trigger_global, scan_subnets_raw, schedule_rows, now, trigger_openwrt, openwrt_conf = await asyncio.to_thread(sync_check)
+    trigger_global, scan_subnets_raw, schedule_rows, now, trigger_openwrt, openwrt_conf, trigger_adguard, adguard_conf = await asyncio.to_thread(sync_check)
 
     if trigger_global:
         target = None
@@ -181,6 +209,34 @@ async def handle_schedules():
                 logger.error(f"OpenWRT sync failed: {e}")
         
         asyncio.create_task(run_openwrt_sync())
+
+    if trigger_adguard:
+        from app.services.adguard import AdguardClient
+        async def run_adguard_sync():
+            try:
+                logger.info("Starting scheduled AdGuard sync...")
+                client = AdguardClient(adguard_conf["url"], adguard_conf["username"], adguard_conf.get("password"))
+                await asyncio.to_thread(client.sync)
+                
+                # Update last_sync
+                def update_ag_ts():
+                    conn = get_connection()
+                    try:
+                        # fetch again to merge
+                        row = conn.execute("SELECT config FROM integrations WHERE name = 'adguard'").fetchone()
+                        if row:
+                            c = json.loads(row[0])
+                            c["last_sync"] = datetime.now(timezone.utc).isoformat()
+                            conn.execute("UPDATE integrations SET config = ? WHERE name = 'adguard'", [json.dumps(c)])
+                            from app.core.db import commit
+                            commit()
+                    finally: conn.close()
+                await asyncio.to_thread(update_ag_ts)
+                logger.info("AdGuard sync completed.")
+            except Exception as e:
+                logger.error(f"AdGuard sync failed: {e}")
+        
+        asyncio.create_task(run_adguard_sync())
 
 async def enqueue_scan(target: str, scan_type: str) -> Optional[str]:
     from uuid import uuid4
